@@ -1,4 +1,5 @@
 import pygame
+import tkinter
 
 pygame.display.init()
 pygame.display.set_caption("Test")
@@ -23,7 +24,7 @@ def drawImages():
 
 def handleMouseinput():
     x, y = pygame.mouse.get_pos()
-    screen.set_at((x, y), (255,255,255))
+    screen.set_at((x, y), (255, 255, 255))
     pass
 
 
