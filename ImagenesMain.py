@@ -1,42 +1,3 @@
-import pygame
-import tkinter
-
-pygame.display.init()
-pygame.display.set_caption("Test")
-screen = pygame.display.set_mode((1100, 600))
-
-class Image:
-    def __init__(self, data, width, height, type):
-        self.data = data
-        self.width = width
-        self.height = height
-        self.type = type
-def createObjects():
-    pass
-
-def drawImages():
-    screen.set_at((100, 100), (255, 255, 255))
-
-def handleMouseinput():
-    x, y = pygame.mouse.get_pos()
-    screen.set_at((x, y), (255, 255, 255))
-    pass
-
-def main():
-    running = True
-    screen.fill([0, 0, 0])
-    while running:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1:
-                    handleMouseinput()
-        createObjects()
-        drawImages()
-        pygame.display.update()
-main()
-"""
 from tkinter import filedialog
 from tkinter import *
 import pygame
@@ -62,108 +23,34 @@ class Window(Frame):
         fileMenu = Menu(menu)
         fileMenu.add_command(label="New File")
         fileMenu.add_command(label="Load Image", command=openFile)
-        fileMenu.add_command(label="Item")
+        fileMenu.add_command(label="Save File", command=saveFile)
         fileMenu.add_command(label="Exit", command=self.exitProgram)
         menu.add_cascade(label="File", menu=fileMenu)
-
         editMenu = Menu(menu)
-        editMenu.add_command(label="Undo")
-        editMenu.add_command(label="Redo")
+        editMenu.add_command(label="Get value", command=getValue)
+        editMenu.add_command(label="Edit value")
         menu.add_cascade(label="Edit", menu=editMenu)
+
+        Label(master, text="x: ").grid(row=0, column=0)
+        Label(master, text="y: ").grid(row=1, column=0)
+        Label(master, text="color: ").grid(row=2, column=0)
+        self.xLabel = Label(master, text="0")
+        self.xLabel.grid(row=0, column=1)
+        self.yLabel = Label(master, text="0")
+        self.yLabel.grid(row=1, column=1)
+        self.valueEntry = Entry(master, text="First Name")
+        self.valueEntry.grid(row=2, column=1)
 
     def exitProgram(self):
         exit()
 
-
-def partition(s, ch):
-    if (ch in s):
-        i = s.index(ch)
-        return (s[0:i], s[i], s[i + 1:])
-    else:
-        return (s, None, None)
-
-def strip_comments(s):
-    #
-    #  Works in 2.5.1, but not in older versions
-    #
-    #  (rval, junk1, junk2) = s.partition("#")
-    (rval, junk1, junk2) = partition(s, "#")
-    return rval.rstrip(" \t\n")
-
+    def setValueEntry(self, x, y, value):
+        self.xLabel['text'] = x
+        self.yLabel['text'] = y
+        self.valueEntry.delete(0,END)
+        self.valueEntry.insert(0,value)
 
 def loadPpm(file):
-    count = 0
-    while count < 3:
-        line = file.readline()
-        if line[0] == '#':  # Ignore comments
-            continue
-        count = count + 1
-        if count == 1:  # Magic num info
-            magicNum = line.strip()
-            if magicNum != 'P2' and magicNum != 'P6':
-                print('Not a valid PGM file')
-        elif count == 2:  # Width and Height
-            [width, height] = (line.strip()).split()
-            width = int(width)
-            height = int(height)
-        elif count == 3:  # Max gray level
-            maxVal = int(line.strip())
-    img = []
-    buf = file.read()
-    elem = buf.split()
-    """if len(elem) != width * height:
-        print('Error in number of pixels')
-        exit()"""
-    surface = pygame.display.set_mode((width, height))
-    for y in range(height):
-        tmpList = []
-        for x in range(width):
-            tmpList.append([elem[(y * width + x) * 3],
-                            elem[(y * width + x) * 3 + 1],
-                            elem[(y * width + x) * 3 + 2]])
-            print([elem[(y * width + x) * 3],
-                    elem[(y * width + x) * 3 + 1],
-                    elem[(y * width + x) * 3 + 2]])
-            surface.set_at((x, y), (image[x][0], image[x][0]))
-        img.append(tmpList)
-
-    """
-    magic = strip_comments(file.readline())
-    # Magic Number
-    if magic != "P6":
-        raise PPM_Exception('The file being loaded does not appear to be a valid ASCII PPM file')
-
-    # (width, sep, height)
-    dimensions = strip_comments(file.readline())
-    (width, sep, height) = partition(dimensions, " ")
-
-    width = int(width)
-    height = int(height)
-
-    if (width <= 0) or (height <= 0):
-        raise PPM_Exception("The file being loaded does not appear to have valid dimensions (" + str(
-            width) + " x " + str(height) + ")")
-
-    # Depth of color
-    depth = file.readline()
-    depth = int(strip_comments(depth))
-    if max != 255:
-        sys.stderr.write("Warning: PPM file does not have a maximum value of 255.  Image may not be handled correctly.")
-
-    color_list = []
-    for line in file:
-        line = strip_comments(line)
-        color_list += line.split(" ")
-    image = []
-    surface = pygame.display.set_mode((width, height))"""
-    """for x in range(0, width):
-        image.append([])
-        for y in range(0, height):
-            image[x].append([color_list[(y * width + x) * 3],
-                             color_list[(y * width + x) * 3 + 1],
-                             color_list[(y * width + x) * 3 + 2]])
-            print(image[x])
-    """        """#surface.set_at((x, y), (image[x][0], image[x][0]))"""
     pass
 
 
@@ -174,6 +61,19 @@ def loadPgm(file):
 def loadRaw(file):
     pass
 
+
+def getValue():
+    pass
+
+def saveFile():
+    pass
+    """
+    f = filedialog.asksaveasfile(mode='w', defaultextension=".raw")
+    if f:
+        with open('blue_red_example.ppm', 'wb') as f:
+            f.write(bytearray(ppm_header, 'ascii'))
+            image.tofile(f)
+    f.close()"""
 
 def openFile():
     ftypes = [
@@ -196,34 +96,39 @@ def openFile():
         print("cancelled")
 
 class Image:
-    def __init__(self, data, width, height, type):
+    def __init__(self, data, width, height, type, surface, topleft=None):
         self.data = data
         self.width = width
         self.height = height
         self.type = type
+        self.surface = surface
+        self.topleft = topleft
 
-def handleMouseinput(surface):
+    def draw(self):
+        for x in range(self.height):
+            for y in range(self.width):
+                self.surface.set_at((x + self.topleft[0], y + self.topleft[0]), self.data[x][y])
+
+
+def checkOnImage(x, y, blackImage):
+    if 50 <= x <= blackImage.width + 50 and 50 <= y <= blackImage.height + 50:
+        return True
+
+
+def handleMouseinput(surface, app, blackImage):
     x, y = pygame.mouse.get_pos()
-    surface.set_at((x, y), (255, 255, 255))
-    pass
+    if checkOnImage(x, y, blackImage):
+        app.setValueEntry(x-50, y-50, blackImage.data[x-50][y-50])
+    print(x, y)
 
 
-def Draw(surf):
-    # Clear view
-    # surf.fill((80, 80, 80))
-    pygame.display.flip()
-
-
-def GetInput(surface):
+def GetInput(surface, app, blackImage):
     for event in pygame.event.get():
         if event.type == QUIT:
             return True
-        if event.type == KEYDOWN:
-            print(event)
         if event.type == MOUSEBUTTONDOWN:
-            print(event)
             if event.button == 1:
-                handleMouseinput(surface)
+                handleMouseinput(surface, app, blackImage)
         sys.stdout.flush()  # get stuff to the console
     return False
 
@@ -236,29 +141,40 @@ def quit_callback():
     Done = True
 
 
+def newBlackImage (width, height, surface):
+    data = []
+    for i in range(height):
+        row = []
+        for j in range(width):
+            row.append((0,0,0))
+        data.append(row)
+    return Image(data, width, height, "type", surface, (50, 50))
+
 def main():
     # initialise pygame
     pygame.init()
-    ScreenSize = (200, 200)
+    ScreenSize = (700, 400)
     surface = pygame.display.set_mode(ScreenSize)
     # initialise tkinter
 
     app = Window(root)
+
     root.wm_title("Tkinter window")
     root.protocol("WM_DELETE_WINDOW", quit_callback)
-    """main_dialog = tkinter.Frame(root)
-    main_dialog.pack()"""
-    # start pygame clock
-    clock = pygame.time.Clock()
+    surface.fill((255, 255, 255))
+    blackImage = newBlackImage(300, 300, surface)
+
+
     gameframe = 0
     # main loop
     while not Done:
+        if GetInput(surface, app, blackImage):  # input event can also comes from diaglog
+            break
         try:
             app.update()
         except:
             print("dialog error")
-        if GetInput(surface):  # input event can also comes from diaglog
-            break
+        blackImage.draw()
         gameframe += 1
         pygame.display.update()
     app.destroy()
