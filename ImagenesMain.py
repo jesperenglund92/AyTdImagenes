@@ -3,14 +3,20 @@ from tkinter import *
 import pygame
 import sys
 from pygame.locals import *
+import struct
+import binascii
+import array
 
 root = Tk()
 
+
 class PPM_Exception(Exception):
-  def __init__(self, value):
-    self.value = value
-  def __str__(self):
-    return repr(self.value)
+    def __init__(self, value):
+        self.value = value
+
+    def __str__(self):
+        return repr(self.value)
+
 
 class Window(Frame):
     def __init__(self, master=None):
@@ -50,7 +56,38 @@ class Window(Frame):
         self.valueEntry.delete(0,END)
         self.valueEntry.insert(0,value)
 
+
 def loadPpm(file):
+    count = 0
+    while count < 3:
+        line = file.readline()
+        if line[0] == '#':  # Ignore comments
+            continue
+        count = count + 1
+        if count == 1:  # Magic num info
+            magicNum = line.strip()
+            if magicNum != 'P2' and magicNum != 'P6':
+                print('Not a valid PGM file')
+        elif count == 2:  # Width and Height
+            [width, height] = (line.strip()).split()
+            width = int(width)
+            height = int(height)
+        elif count == 3:  # Max gray level
+            maxVal = int(line.strip())
+    image = []
+    surface = pygame.display.set_mode((width, height))
+    for y in range(height):
+        tmpList = []
+        for x in range(width):
+            tmpList.append([int.from_bytes(file.read(1), byteorder="big"),
+                            int.from_bytes(file.read(1), byteorder="big"),
+                            int.from_bytes(file.read(1), byteorder="big")
+                            ])
+        image.append(tmpList)
+
+    for y1 in range(0, height):
+        for x1 in range(0, width):
+            surface.set_at((x1, y1), image[y1][x1])
     pass
 
 
@@ -95,6 +132,7 @@ def openFile():
     else:
         print("cancelled")
 
+
 class Image:
     def __init__(self, data, width, height, type, surface, topleft=None):
         self.data = data
@@ -108,6 +146,7 @@ class Image:
         for x in range(self.height):
             for y in range(self.width):
                 self.surface.set_at((x + self.topleft[0], y + self.topleft[0]), self.data[x][y])
+
 
 
 def checkOnImage(x, y, blackImage):
