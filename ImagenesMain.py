@@ -148,6 +148,32 @@ class Image:
                 self.surface.set_at((x + self.topleft[0], y + self.topleft[0]), self.data[x][y])
 
 
+class Selection:
+    def __init__(self, posinitial, posfinal):
+        self.posini = posinitial
+        self.posfin = posfinal
+        self.bottonrigth = [max(posinitial[0], posfinal[0]), max(posinitial[1], posfinal[1])]
+        self.bottonleft = [min(posinitial[0], posfinal[0]), min(posinitial[1], posfinal[1])]
+
+    def set_final(self, posfin):
+        self.posfin = posfin
+        self.updatePositions()
+
+    def set_initial(self, posini):
+        self.posini = posini
+        self.updatePositions()
+
+    def draw(self):
+        pass
+
+    def updatePositions(self):
+        self.bottonrigth = [max(self.posini[0], self.posfin[0]), max(self.posini[1], self.posfin[1])]
+        self.bottonleft = [min(self.posini[0], self.posfin[0]), min(self.posini[1], self.posfin[1])]
+
+class square:
+    def __init__(self, radius, pos):
+        self.radius = radius
+        self.pos = pos
 
 def checkOnImage(x, y, blackImage):
     if 50 <= x <= blackImage.width + 50 and 50 <= y <= blackImage.height + 50:
