@@ -92,6 +92,20 @@ class Image(object):
             data.append(tmpList)
         return data
 
+    def get_data(self):
+        return self.data
+
+    def get_type(self):
+        return self.type
+
+    def get_size(self):
+        return [self.width, self.height]
+
+    def set_size(self, size):
+        self.width = size[0]
+        self.height = size[1]
+
+
 selection = ImageSelection()
 editableImage = Image()
 originalImage = Image()
@@ -177,6 +191,19 @@ def loadPpm(file):
             surface.set_at((x1, y1), image[y1][x1])
     pass
 
+def savePpm(file):
+    image = editableImage.get_data()
+    width = editableImage.get_size()[0]
+    height = editableImage.get_size()[1]
+    ## TODO: Write headers
+
+    for y in range(height):
+        for x in range(width):
+            file.write(int.to_bytes(image[x][y][0], byteorder="big"))
+            file.write(int.to_bytes(image[x][y][1], byteorder="big"))
+            file.write(int.to_bytes(image[x][y][2], byteorder="big"))
+    pass
+
 def loadPgm(file):
     count = 0
     while count < 3:
@@ -208,6 +235,17 @@ def loadPgm(file):
             surface.set_at((x, y), image[y][x])
     pass
 
+def savePgm(file):
+    image = editableImage.get_data()
+    width = editableImage.get_size()[0]
+    height = editableImage.get_size()[1]
+    ## TODO: Write headers
+
+    for y in range(height):
+        for x in range(width):
+            file.write(int.to_bytes(image[x][y], byteorder="big"))
+    pass
+
 def loadRaw(file):
     """window = Toplevel(root)
     b = Button(window, text="Boton")
@@ -228,37 +266,18 @@ def loadRaw(file):
     for y in range(0, height):
         for x in range(0, width):
             surface.set_at((x, y), image[y][x])
+    pass
 
-    """while count < 3:
-        line = file.readline()
-        if line[0] == '#':  # Ignore comments
-            continue
-        count = count + 1
-        if count == 1:  # Magic num info
-            magicNum = line.strip()
-            if magicNum != 'P2' or magicNum != 'P6':
-                print('Not a valid PPM file')
-        elif count == 2:  # Width and Height
-            [width, height] = (line.strip()).split()
-            width = int(width)
-            height = int(height)
-        elif count == 3:  # Max gray level
-            maxVal = int(line.strip())
-    image = []
-    surface = pygame.display.set_mode((width, height))
+def saveRaw(file):
+    image = editableImage.get_data()
+    width = editableImage.get_size()[0]
+    height = editableImage.get_size()[1]
+
+    # surface = pygame.display.set_mode((width, height))
     for y in range(height):
-        tmpList = []
         for x in range(width):
-            tmpList.append([int.from_bytes(file.read(1), byteorder="big"),
-                            int.from_bytes(file.read(1), byteorder="big"),
-                            int.from_bytes(file.read(1), byteorder="big")
-                            ])
-        image.append(tmpList)
-
-    for y1 in range(0, height):
-        for x1 in range(0, width):
-            surface.set_at((x1, y1), image[y1][x1])
-    """
+            color = int.to_bytes(image[x][y], byteorder="big")
+            file.write(color)
     pass
 
 def openFile():
@@ -280,6 +299,24 @@ def openFile():
         file.close()
     else:
         print("cancelled")
+
+def saveFile():
+    file = filedialog.asksaveasfile(mode='w', defaultextension=editableImage.get_type())
+    if file:
+        if file.name.lower().endswith(('.raw')):
+            saveRaw(file)
+        if file.name.lower().endswith(('.pgm')):
+            savePgm(file)
+        if file.name.lower().endswith(('.ppm')):
+            savePpm(file)
+    pass
+    """
+    f = filedialog.asksaveasfile(mode='w', defaultextension=".raw")
+    if f:
+        with open('blue_red_example.ppm', 'wb') as f:
+            f.write(bytearray(ppm_header, 'ascii'))
+            image.tofile(f)
+    f.close()"""
 
 """class SelectionWindow(Frame):
     def __init__(self, master=None):
@@ -357,17 +394,6 @@ def openRAWWindow():
 
 def getValue():
     pass
-
-def saveFile():
-    pass
-    """
-    f = filedialog.asksaveasfile(mode='w', defaultextension=".raw")
-    if f:
-        with open('blue_red_example.ppm', 'wb') as f:
-            f.write(bytearray(ppm_header, 'ascii'))
-            image.tofile(f)
-    f.close()"""
-
 
 class ImageSelection:
     def __init__(self):
