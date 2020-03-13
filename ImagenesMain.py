@@ -344,12 +344,12 @@ def main():
     gameframe = 0
     # main loop
     while not Done:
-        if GetInput(surface, app, blackImage):  # input event can also comes from diaglog
-            break
         try:
             app.update()
         except:
             print("dialog error")
+        if GetInput(surface, app, blackImage):  # input event can also comes from diaglog
+            break
         blackImage.draw()
         gameframe += 1
         pygame.display.update()
