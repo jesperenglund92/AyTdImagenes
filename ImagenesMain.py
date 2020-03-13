@@ -178,15 +178,90 @@ def loadPpm(file):
     pass
 
 def loadPgm(file):
+    count = 0
+    while count < 3:
+        line = file.readline()
+        if line[0] == '#':  # Ignore comments
+            continue
+        count = count + 1
+        if count == 1:  # Magic num info
+            magicNum = line.strip()
+            if magicNum != 'P2' or magicNum != 'P6':
+                print('Not a valid PPM file')
+        elif count == 2:  # Width and Height
+            [width, height] = (line.strip()).split()
+            width = int(width)
+            height = int(height)
+        elif count == 3:  # Max gray level
+            maxVal = int(line.strip())
+    image = []
+    surface = pygame.display.set_mode((width, height))
+    for y in range(height):
+        tmpList = []
+        for x in range(width):
+            color = int.from_bytes(file.read(1), byteorder="big")
+            tmpList.append([color, color, color])
+        image.append(tmpList)
+
+    for y in range(0, height):
+        for x in range(0, width):
+            surface.set_at((x, y), image[y][x])
     pass
 
 def loadRaw(file):
-    window = Toplevel(root)
+    """window = Toplevel(root)
     b = Button(window, text="Boton")
-    b.pack()
+    b.pack()"""
+    count = 0
+    width = 290
+    height = 207
+
+    image = []
+    surface = pygame.display.set_mode((width, height))
+    for y in range(height):
+        tmpList = []
+        for x in range(width):
+            color = int.from_bytes(file.read(1), byteorder="big")
+            tmpList.append([color, color, color])
+        image.append(tmpList)
+
+    for y in range(0, height):
+        for x in range(0, width):
+            surface.set_at((x, y), image[y][x])
+
+    """while count < 3:
+        line = file.readline()
+        if line[0] == '#':  # Ignore comments
+            continue
+        count = count + 1
+        if count == 1:  # Magic num info
+            magicNum = line.strip()
+            if magicNum != 'P2' or magicNum != 'P6':
+                print('Not a valid PPM file')
+        elif count == 2:  # Width and Height
+            [width, height] = (line.strip()).split()
+            width = int(width)
+            height = int(height)
+        elif count == 3:  # Max gray level
+            maxVal = int(line.strip())
+    image = []
+    surface = pygame.display.set_mode((width, height))
+    for y in range(height):
+        tmpList = []
+        for x in range(width):
+            tmpList.append([int.from_bytes(file.read(1), byteorder="big"),
+                            int.from_bytes(file.read(1), byteorder="big"),
+                            int.from_bytes(file.read(1), byteorder="big")
+                            ])
+        image.append(tmpList)
+
+    for y1 in range(0, height):
+        for x1 in range(0, width):
+            surface.set_at((x1, y1), image[y1][x1])
+    """
     pass
 
-def openFile(z):
+def openFile():
     ftypes = [
         ('RAW', '*.raw'),
         ('PGM', '*.pgm'),  # semicolon trick
@@ -222,6 +297,10 @@ y1 = StringVar()
 x2 = StringVar()
 y2 = StringVar()
 
+def printvalues():
+    global x1, x2, y1, y2
+    print([x1.get(), y1.get(), x2.get(), y2.get()])
+    pass
 
 def openSelectWindow():
     selectionWindow = Tk()
@@ -264,11 +343,8 @@ def openRAWWindow():
     lblSelection = Label(rawWindow, text="width").grid(row=1)
     lblInitial = Label(rawWindow, text="height").grid(row=3)
 
-    pass
 
 
-def printvalues():
-    global x1, x2, y1, y2
 
     """
     txtInitialX.pack()
@@ -318,10 +394,6 @@ class ImageSelection:
     def updatePositions(self):
         self.bottonrigth = [max(self.posini[0], self.posfin[0]), max(self.posini[1], self.posfin[1])]
         self.bottonleft = [min(self.posini[0], self.posfin[0]), min(self.posini[1], self.posfin[1])]
-
-
-
-
 
 class square:
     def __init__(self, radius, pos):
@@ -418,9 +490,10 @@ def checkOnImage(x, y, blackImage):
 
 def handleMouseinput(surface, app, blackImage):
     x, y = pygame.mouse.get_pos()
-    if checkOnImage(x, y, blackImage):
-        app.setValueEntry(x-50, y-50, blackImage.data[x-50][y-50])
-    print(x, y)
+    surface = pygame.display.get_surface();
+    """if checkOnImage(x, y, blackImage):
+        app.setValueEntry(x-50, y-50, blackImage.data[x-50][y-50])"""
+    print(surface.get_at((x,y)))
 
 
 def GetInput(surface, app, blackImage):
@@ -475,7 +548,7 @@ def main():
             print("dialog error")
         if GetInput(surface, app, blackImage):  # input event can also comes from diaglog
             break
-        blackImage.draw()
+        # blackImage.draw()
         gameframe += 1
         pygame.display.update()
     app.destroy()
