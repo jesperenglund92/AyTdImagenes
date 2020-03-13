@@ -12,131 +12,47 @@ import array
 root = Tk()
 
 
-class PPM_Exception(Exception):
-    def __init__(self, value):
-        self.value = value
 
-    def __str__(self):
-        return repr(self.value)
+class ImageSelection(object):
+    def __init__(self, posinitial=[0,0], posfinal=[0, 0]):
+        self.posini = posinitial
+        self.posfin = posfinal
+        self.bottonrigth = [max(posinitial[0], posfinal[0]), max(posinitial[1], posfinal[1])]
+        self.bottonleft = [min(posinitial[0], posfinal[0]), min(posinitial[1], posfinal[1])]
+        self.active = bool(False)
 
+    def set_final(self, posfin):
+        self.posfin = posfin
+        self.updatePositions()
 
-class Window(Frame):
-    def __init__(self, master=None):
-        Frame.__init__(self, master)
-        self.master = master
+    def set_initial(self, posini):
+        self.posini = posini
+        self.updatePositions()
 
-        menu = Menu(self.master)
-        self.master.config(menu=menu)
+    def get_final(self):
+        return self.posfin
 
-        fileMenu = Menu(menu)
-        fileMenu.add_command(label="New File")
-        fileMenu.add_command(label="Load Image", command=openFile)
-        fileMenu.add_command(label="Save File", command=saveFile)
-        fileMenu.add_command(label="Exit", command=self.exitProgram)
-        menu.add_cascade(label="File", menu=fileMenu)
-        editMenu = Menu(menu)
-        editMenu.add_command(label="Get value", command=getValue)
-        editMenu.add_command(label="Edit value")
-        menu.add_cascade(label="Edit", menu=editMenu)
+    def get_initial(self):
+        return self.posini
 
-        Label(master, text="x: ").grid(row=0, column=0)
-        Label(master, text="y: ").grid(row=1, column=0)
-        Label(master, text="color: ").grid(row=2, column=0)
-        self.xLabel = Label(master, text="0")
-        self.xLabel.grid(row=0, column=1)
-        self.yLabel = Label(master, text="0")
-        self.yLabel.grid(row=1, column=1)
-        self.valueEntry = Entry(master, text="First Name")
-        self.valueEntry.grid(row=2, column=1)
+    def draw(self):
+        pass
 
-    def exitProgram(self):
-        exit()
+    def updatePositions(self):
+        self.bottonrigth = [max(self.posini[0], self.posfin[0]), max(self.posini[1], self.posfin[1])]
+        self.bottonleft = [min(self.posini[0], self.posfin[0]), min(self.posini[1], self.posfin[1])]
 
-    def setValueEntry(self, x, y, value):
-        self.xLabel['text'] = x
-        self.yLabel['text'] = y
-        self.valueEntry.delete(0,END)
-        self.valueEntry.insert(0,value)
+    def is_active(self):
+        return self.active
 
+    def set_active(self, active):
+        self.active = active
 
-def loadPpm(file):
-    count = 0
-    while count < 3:
-        line = file.readline()
-        if line[0] == '#':  # Ignore comments
-            continue
-        count = count + 1
-        if count == 1:  # Magic num info
-            magicNum = line.strip()
-            if magicNum != 'P2' and magicNum != 'P6':
-                print('Not a valid PGM file')
-        elif count == 2:  # Width and Height
-            [width, height] = (line.strip()).split()
-            width = int(width)
-            height = int(height)
-        elif count == 3:  # Max gray level
-            maxVal = int(line.strip())
-    image = []
-    surface = pygame.display.set_mode((width, height))
-    for y in range(height):
-        tmpList = []
-        for x in range(width):
-            tmpList.append([int.from_bytes(file.read(1), byteorder="big"),
-                            int.from_bytes(file.read(1), byteorder="big"),
-                            int.from_bytes(file.read(1), byteorder="big")
-                            ])
-        image.append(tmpList)
+class Image(object):
+    def __init__(self):
+        pass
 
-    for y1 in range(0, height):
-        for x1 in range(0, width):
-            surface.set_at((x1, y1), image[y1][x1])
-    pass
-
-
-def loadPgm(file):
-    pass
-
-
-def loadRaw(file):
-    pass
-
-
-def getValue():
-    pass
-
-def saveFile():
-    pass
-    """
-    f = filedialog.asksaveasfile(mode='w', defaultextension=".raw")
-    if f:
-        with open('blue_red_example.ppm', 'wb') as f:
-            f.write(bytearray(ppm_header, 'ascii'))
-            image.tofile(f)
-    f.close()"""
-
-def openFile():
-    ftypes = [
-        ('RAW', '*.raw'),
-        ('PGM', '*.pgm'),  # semicolon trick
-        ('PPM', '*.ppm'),
-        ('All files', '*'),
-    ]
-    filename = filedialog.askopenfilename(initialdir="/", title="Select file", filetypes=ftypes)
-    if filename:
-        file = open(filename, "rb")
-        if filename.lower().endswith(('.raw')):
-            loadRaw(file)
-        if filename.lower().endswith(('.pgm')):
-            loadPgm(file)
-        if filename.lower().endswith(('.ppm')):
-            loadPpm(file)
-        file.close()
-    else:
-        print("cancelled")
-
-
-class Image:
-    def __init__(self, data, width, height, type, surface, topleft=None):
+    def __init__(self, data=[], width=0, height=0, type=0, surface=0, topleft=None):
         self.data = data
         self.width = width
         self.height = height
@@ -176,7 +92,212 @@ class Image:
             data.append(tmpList)
         return data
 
-class Selection:
+selection = ImageSelection()
+editableImage = Image()
+originalImage = Image()
+
+class PPM_Exception(Exception):
+    def __init__(self, value):
+        self.value = value
+
+    def __str__(self):
+        return repr(self.value)
+
+
+class Window(Frame):
+    def __init__(self, master=None):
+        Frame.__init__(self, master)
+        self.master = master
+
+        menu = Menu(self.master)
+        self.master.config(menu=menu)
+
+        fileMenu = Menu(menu)
+        fileMenu.add_command(label="New File")
+        fileMenu.add_command(label="Load Image", command=openFile)
+        fileMenu.add_command(label="Save File", command=saveFile)
+        fileMenu.add_command(label="Exit", command=self.exitProgram)
+        menu.add_cascade(label="File", menu=fileMenu)
+        editMenu = Menu(menu)
+
+        editMenu.add_command(label="Get value", command=getValue)
+        editMenu.add_command(label="Edit value")
+        editMenu.add_command(label="Select", command=openSelectWindow)
+        menu.add_cascade(label="Edit", menu=editMenu)
+
+        Label(master, text="x: ").grid(row=0, column=0)
+        Label(master, text="y: ").grid(row=1, column=0)
+        Label(master, text="color: ").grid(row=2, column=0)
+        self.xLabel = Label(master, text="0")
+        self.xLabel.grid(row=0, column=1)
+        self.yLabel = Label(master, text="0")
+        self.yLabel.grid(row=1, column=1)
+        self.valueEntry = Entry(master, text="First Name")
+        self.valueEntry.grid(row=2, column=1)
+
+    def exitProgram(self):
+        exit()
+
+    def setValueEntry(self, x, y, value):
+        self.xLabel['text'] = x
+        self.yLabel['text'] = y
+        self.valueEntry.delete(0,END)
+        self.valueEntry.insert(0,value)
+
+def loadPpm(file):
+    count = 0
+    while count < 3:
+        line = file.readline()
+        if line[0] == '#':  # Ignore comments
+            continue
+        count = count + 1
+        if count == 1:  # Magic num info
+            magicNum = line.strip()
+            if magicNum != 'P2' or magicNum != 'P6':
+                print('Not a valid PPM file')
+        elif count == 2:  # Width and Height
+            [width, height] = (line.strip()).split()
+            width = int(width)
+            height = int(height)
+        elif count == 3:  # Max gray level
+            maxVal = int(line.strip())
+    image = []
+    surface = pygame.display.set_mode((width, height))
+    for y in range(height):
+        tmpList = []
+        for x in range(width):
+            tmpList.append([int.from_bytes(file.read(1), byteorder="big"),
+                            int.from_bytes(file.read(1), byteorder="big"),
+                            int.from_bytes(file.read(1), byteorder="big")
+                            ])
+        image.append(tmpList)
+
+    for y1 in range(0, height):
+        for x1 in range(0, width):
+            surface.set_at((x1, y1), image[y1][x1])
+    pass
+
+def loadPgm(file):
+    pass
+
+def loadRaw(file):
+    window = Toplevel(root)
+    b = Button(window, text="Boton")
+    b.pack()
+    pass
+
+def openFile(z):
+    ftypes = [
+        ('RAW', '*.raw'),
+        ('PGM', '*.pgm'),  # semicolon trick
+        ('PPM', '*.ppm'),
+        ('All files', '*'),
+    ]
+    filename = filedialog.askopenfilename(initialdir="/", title="Select file", filetypes=ftypes)
+    if filename:
+        file = open(filename, "rb")
+        if filename.lower().endswith(('.raw')):
+            loadRaw(file)
+        if filename.lower().endswith(('.pgm')):
+            loadPgm(file)
+        if filename.lower().endswith(('.ppm')):
+            loadPpm(file)
+        file.close()
+    else:
+        print("cancelled")
+
+"""class SelectionWindow(Frame):
+    def __init__(self, master=None):
+        selectionWindow = Tk()
+        selectionWindow.title("Selection")
+        selectionWindow.focus_set()
+        display = Label(selectionWindow, text="Selection Window")
+        display.pack()
+        Label(master, text="x: ").grid(row=0, column=0)
+        Label(master, text="y: ").grid(row=1, column=0)
+"""
+
+x1 = StringVar()
+y1 = StringVar()
+x2 = StringVar()
+y2 = StringVar()
+
+
+def openSelectWindow():
+    selectionWindow = Tk()
+    """selectionWindow.geometry("200x200")"""
+    selectionWindow.title("Selection")
+
+    selectionWindow.focus_set()
+    """display = Label(selectionWindow, text="Selection Window")
+    display.pack()
+    Label(selectionWindow, text="x: ").grid(row=0, column=0)
+    Label(selectionWindow, text="y: ").grid(row=1, column=0)"""
+
+    lblSelection = Label(selectionWindow, text="Selection").grid(row=4)
+    lblInitial = Label(selectionWindow, text="TopLeft").grid(row=5)
+    lblFinal = Label(selectionWindow, text="TopLeft").grid(row=6)
+
+    global selection
+    global x1
+    global x2
+    global y1
+    global y2
+
+    txtInitialX = Entry(selectionWindow, textvariable=x1)
+    txtInitialY = Entry(selectionWindow, textvariable=y1)
+
+    txtLastX = Entry(selectionWindow, textvariable=x2)
+    txtLastY = Entry(selectionWindow, textvariable=y2)
+
+    txtInitialX.grid(row=5, column=1)
+    txtInitialY.grid(row=5, column=2)
+    txtLastX.grid(row=6, column=1)
+    txtLastY.grid(row=6, column=2)
+    button = Button(selectionWindow, text="Armar selection", command=printvalues)
+    button.grid(row=8)
+
+def openRAWWindow():
+    rawWindow = Tk()
+    rawWindow.title("Select width and heigth")
+    rawWindow.focus_set()
+    lblSelection = Label(rawWindow, text="width").grid(row=1)
+    lblInitial = Label(rawWindow, text="height").grid(row=3)
+
+    pass
+
+
+def printvalues():
+    global x1, x2, y1, y2
+
+    """
+    txtInitialX.pack()
+    txtInitialY.pack()
+    
+    label = Label(selectionWindow, text="Position: ").grid(row=7, column=0).pack()
+    res = Label(selectionWindow).grid(row=7, column = 1)
+    res.pack()"""
+
+
+def getValue():
+    pass
+
+def saveFile():
+    pass
+    """
+    f = filedialog.asksaveasfile(mode='w', defaultextension=".raw")
+    if f:
+        with open('blue_red_example.ppm', 'wb') as f:
+            f.write(bytearray(ppm_header, 'ascii'))
+            image.tofile(f)
+    f.close()"""
+
+
+class ImageSelection:
+    def __init__(self):
+        self.posini = [0 , 0]
+        self.posfin = [0, 0]
+
     def __init__(self, posinitial, posfinal):
         self.posini = posinitial
         self.posfin = posfinal
@@ -197,6 +318,10 @@ class Selection:
     def updatePositions(self):
         self.bottonrigth = [max(self.posini[0], self.posfin[0]), max(self.posini[1], self.posfin[1])]
         self.bottonleft = [min(self.posini[0], self.posfin[0]), min(self.posini[1], self.posfin[1])]
+
+
+
+
 
 class square:
     def __init__(self, radius, pos):
