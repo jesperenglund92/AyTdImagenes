@@ -19,7 +19,8 @@ class Window(Frame):
         fileMenu = Menu(menu)
 
         newSubmenu = Menu(fileMenu)
-        newSubmenu.add_command(label="circle", command=newWhiteCircle)
+        newSubmenu.add_command(label="Circle", command=newWhiteCircle)
+        newSubmenu.add_command(label="Square", command=newWhiteSquare)
 
         fileMenu.add_cascade(label="New File", menu=newSubmenu)
         fileMenu.add_command(label="Exit", command=self.exitProgram)
@@ -36,8 +37,12 @@ class Window(Frame):
         self.xLabel.grid(row=0, column=1)
         self.yLabel = Label(master, text="0")
         self.yLabel.grid(row=1, column=1)
-        self.valueEntry = Entry(master, text="First Name")
+        self.valueEntry = Entry(master)
         self.valueEntry.grid(row=2, column=1)
+        self.changebtn = Button(master, text="Change",
+                                command=lambda: changepixval(self.xLabel['text'], self.yLabel['text'],
+                                                             self.valueEntry.get()))
+        self.changebtn.grid(row=2, column=2)
 
     def exitProgram(self):
         exit()
@@ -61,7 +66,7 @@ class Image:
     def draw(self):
         for x in range(self.height):
             for y in range(self.width):
-                self.surface.set_at((x + self.topleft[0], y + self.topleft[0]), self.data[x][y])
+                self.surface.set_at((x + self.topleft[0], y + self.topleft[1]), self.data[x][y])
 
 
 def quit_callback():
@@ -69,20 +74,48 @@ def quit_callback():
     Done = True
 
 
+def changepixval(x, y, color):
+    colorlist = color.split()
+    r, g, b = int(colorlist[0]), int(colorlist[1]), int(colorlist[2])
+    for obj in objects:
+        obj.data[x][y] = (r, g, b)
+        obj.draw()
+
+
 def newWhiteCircle():
     data = []
     radius = 50
     center = 150
-    topleft = 50, 50
+    topleft = 50
     for i in range(200):
         row = []
         for j in range(200):
-            if math.sqrt((i + topleft[0] - center) ** 2 + (j + topleft[1] - center) ** 2) <= radius:
+            if math.sqrt((i + topleft - center) ** 2 + (j + topleft - center) ** 2) <= radius:
                 row.append((255, 255, 255))
             else:
                 row.append((0, 0, 0))
         data.append(row)
-    image = Image(data, 200, 200, "type", surface, topleft)
+    image = Image(data, 200, 200, "type", surface, (topleft, topleft))
+    objects.append(image)
+    image.draw()
+
+
+def newWhiteSquare():
+    data = []
+    height = 100
+    width = 100
+    topleft = 50
+    tlsquare = 50
+    for i in range(200):
+        row = []
+        for j in range(200):
+            if tlsquare <= i <= tlsquare + width and tlsquare <= j <= tlsquare + height:
+                row.append((255, 255, 255))
+            else:
+                row.append((0, 0, 0))
+        data.append(row)
+    image = Image(data, 200, 200, "type", surface, (topleft, topleft))
+    objects.append(image)
     image.draw()
 
 
@@ -93,24 +126,39 @@ def checkOnImage(x, y):
                 return obj
 
 
-def handleMouseinput(surface):
+def makeselection(x, y, x2, y2):
+    pass
+
+
+def handleMouseinput():
     x, y = pygame.mouse.get_pos()
     imClicked = checkOnImage(x, y)
     if imClicked:
-        pass
-    print(x, y)
+        app.setValueEntry(x - 50, y - 50, imClicked.data[x - 50][y - 50])
 
+dragging = False
 
 def getInput():
+    global dragging
     for event in pygame.event.get():
         if event.type == QUIT:
             return True
-        if event.type == MOUSEBUTTONDOWN:
-            print("hej")
+        elif event.type == MOUSEBUTTONDOWN:
             if event.button == 1:
-                handleMouseinput(surface)
+                handleMouseinput()
+                """x, y = pygame.mouse.get_pos()
+                makeselection(x, y, x, y)"""
+                dragging = True
+        elif event.type == MOUSEBUTTONUP:
+            if event.button == 1:
+                dragging = False
+        elif event.type == MOUSEMOTION:
+            if dragging:
+                pass
+                #makeselection(x, y, x, y)
         sys.stdout.flush()  # get stuff to the console
     return False
+
 
 def main():
     # initialise pygame

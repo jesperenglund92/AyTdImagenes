@@ -32,6 +32,7 @@ class Window(Frame):
 
         newSubmenu = Menu(fileMenu)
         newSubmenu.add_command(label="circle", command=newWhiteCircle)
+        newSubmenu.add_command(label="Square", command=newWhiteSquare)
 
         fileMenu.add_cascade(label="New File", menu=newSubmenu)
         fileMenu.add_command(label="Load Image", command=openFile)
@@ -53,6 +54,10 @@ class Window(Frame):
         self.yLabel.grid(row=1, column=1)
         self.valueEntry = Entry(master, text="First Name")
         self.valueEntry.grid(row=2, column=1)
+        self.changebtn = Button(master, text="Change",
+                                command=lambda: changepixval(self.xLabel['text'], self.yLabel['text'],
+                                                             self.valueEntry.get()))
+        self.changebtn.grid(row=2, column=2)
 
     def exitProgram(self):
         exit()
@@ -141,7 +146,7 @@ def openFile():
 
 
 class Image:
-    def __init__(self, data, width, height, type, surface, topleft=None):
+    def __init__(self, data, width, height, type, surface=None, topleft=None):
         self.data = data
         self.width = width
         self.height = height
@@ -150,12 +155,9 @@ class Image:
         self.topleft = topleft
 
     def draw(self):
-        surface = pygame.display.get_surface()
-        print(self.width)
-        print(self.height)
         for x in range(self.height):
             for y in range(self.width):
-                surface.set_at((x + self.topleft[0], y + self.topleft[0]), self.data[x][y])
+                self.surface.set_at((x + self.topleft[0], y + self.topleft[0]), self.data[x][y])
 
     def get_red_band(self):
         data = []
@@ -296,98 +298,111 @@ def hsv2rgb(imageData, width, height):
     return rgbData
 
 
-def checkOnImage(x, y):
-    for obj in objects:
-        if 50 <= x <= obj.width + 50 and 50 <= y <= obj.height + 50:
-            return obj
-
-
-def handleMouseinput(surface, app):
-    x, y = pygame.mouse.get_pos()
-    surface = pygame.display.get_surface()
-
-    #clickedim = checkOnImage(x, y)
-    #if clickedim:
-    #    app.setValueEntry(x-50, y-50, clickedim.data[x-50][y-50])
-    print(surface.get_at((x,y)))
-
-
-def GetInput(surface, app):
-    for event in pygame.event.get():
-        if event.type == QUIT:
-            return True
-        print(event.type)
-        if event.type == MOUSEBUTTONDOWN:
-            if event.button == 1:
-                print("mouse 1")
-                handleMouseinput(surface, app)
-        sys.stdout.flush()  # get stuff to the console
-    return False
-
-
-Done = False
-
-
 def quit_callback():
     global Done
     Done = True
 
 
-def newBlackImage(width, height, surface):
-    data = []
-    for i in range(height):
-        row = []
-        for j in range(width):
-            row.append((0,0,0))
-        data.append(row)
-    return Image(data, width, height, "type", surface, (50, 50))
+def changepixval(x, y, color):
+    colorlist = color.split()
+    r, g, b = int(colorlist[0]), int(colorlist[1]), int(colorlist[2])
+    for obj in objects:
+        obj.data[x][y] = (r, g, b)
+        obj.draw()
 
 
 def newWhiteCircle():
     data = []
     radius = 50
     center = 150
-    topleft = 50, 50
+    topleft = 50
     for i in range(200):
         row = []
         for j in range(200):
-            if math.sqrt((i + topleft[0] - center) ** 2 + (j + topleft[1] - center) ** 2) <= radius:
+            if math.sqrt((i + topleft - center) ** 2 + (j + topleft - center) ** 2) <= radius:
                 row.append((255, 255, 255))
             else:
                 row.append((0, 0, 0))
         data.append(row)
-    image = Image(data, 200, 200, "type", pygame.display.get_surface(), topleft)
+    image = Image(data, 200, 200, "type", surface, (topleft, topleft))
+    objects.append(image)
     image.draw()
 
+
+def newWhiteSquare():
+    data = []
+    height = 100
+    width = 100
+    topleft = 50
+    tlsquare = 50
+    for i in range(200):
+        row = []
+        for j in range(200):
+            if tlsquare <= i <= tlsquare + width and tlsquare <= j <= tlsquare + height:
+                row.append((255, 255, 255))
+            else:
+                row.append((0, 0, 0))
+        data.append(row)
+    image = Image(data, 200, 200, "type", surface, (topleft, topleft))
+    objects.append(image)
+    image.draw()
+
+
+def checkOnImage(x, y):
+    if len(objects) > 0:
+        for obj in objects:
+            if 50 <= x <= obj.width + 50 and 50 <= y <= obj.height + 50:
+                return obj
+
+
+def makeselection(x, y, x2, y2):
+    pass
+
+
+def handleMouseinput():
+    x, y = pygame.mouse.get_pos()
+    imClicked = checkOnImage(x, y)
+    if imClicked:
+        app.setValueEntry(x - 50, y - 50, imClicked.data[x - 50][y - 50])
+
+def getInput():
+    global dragging
+    for event in pygame.event.get():
+        if event.type == QUIT:
+            return True
+        elif event.type == MOUSEBUTTONDOWN:
+            if event.button == 1:
+                handleMouseinput()
+                """x, y = pygame.mouse.get_pos()
+                makeselection(x, y, x, y)"""
+                dragging = True
+        elif event.type == MOUSEBUTTONUP:
+            if event.button == 1:
+                dragging = False
+        elif event.type == MOUSEMOTION:
+            if dragging:
+                pass
+                #makeselection(x, y, x, y)
+        sys.stdout.flush()  # get stuff to the console
+    return False
 
 
 def main():
     # initialise pygame
-    """pygame.init()
-    ScreenSize = (700, 400)
-    surface = pygame.display.set_mode(ScreenSize)"""
-    # initialise tkinter
 
     root.wm_title("Tkinter window")
     root.protocol("WM_DELETE_WINDOW", quit_callback)
     surface.fill((255, 255, 255))
-    #blackImage = newBlackImage(200, 200, surface)
-    #newWhiteCircle()
-    #objects.append(blackImage)
 
-    """thread = Thread(target=tkupdate)
-    thread.daemon = True
-    thread.start()"""
-    # main loop
-    while not Done:
+    done = False
+    while not done:
         try:
             app.update()
+            if getInput():
+                done = True
         except:
             print("dialog error")
-        if GetInput(surface, app):  # input event can also comes from diaglog
-            break
-        pygame.display.update()
-    app.destroy()
+        pygame.display.flip()
 
 root = Tk()
 pygame.init()
@@ -395,5 +410,7 @@ ScreenSize = (700, 400)
 surface = pygame.display.set_mode(ScreenSize)
 objects = []
 app = Window(root)
+dragging = False
+Done = False
 
 if __name__ == '__main__': main()
