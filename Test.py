@@ -8,13 +8,45 @@ from pygame.locals import *
 from pgu import gui
 
 
-app = gui.Desktop()
-app.connect(gui.QUIT, app.quit, None)
-screen = gui.Container(width=500, height=400)
-pygame.init()
-ScreenSize = (700, 400)
-surface = pygame.display.set_mode(ScreenSize)
-objects = []
+class Window(Frame):
+    def __init__(self, master=None):
+        Frame.__init__(self, master)
+        self.master = master
+
+        menu = Menu(self.master)
+        self.master.config(menu=menu)
+
+        fileMenu = Menu(menu)
+
+        newSubmenu = Menu(fileMenu)
+        newSubmenu.add_command(label="circle", command=newWhiteCircle)
+
+        fileMenu.add_cascade(label="New File", menu=newSubmenu)
+        fileMenu.add_command(label="Exit", command=self.exitProgram)
+
+        menu.add_cascade(label="File", menu=fileMenu)
+        editMenu = Menu(menu)
+        editMenu.add_command(label="Edit value")
+        menu.add_cascade(label="Edit", menu=editMenu)
+
+        Label(master, text="x: ").grid(row=0, column=0)
+        Label(master, text="y: ").grid(row=1, column=0)
+        Label(master, text="color: ").grid(row=2, column=0)
+        self.xLabel = Label(master, text="0")
+        self.xLabel.grid(row=0, column=1)
+        self.yLabel = Label(master, text="0")
+        self.yLabel.grid(row=1, column=1)
+        self.valueEntry = Entry(master, text="First Name")
+        self.valueEntry.grid(row=2, column=1)
+
+    def exitProgram(self):
+        exit()
+
+    def setValueEntry(self, x, y, value):
+        self.xLabel['text'] = x
+        self.yLabel['text'] = y
+        self.valueEntry.delete(0,END)
+        self.valueEntry.insert(0,value)
 
 
 class Image:
@@ -30,6 +62,11 @@ class Image:
         for x in range(self.height):
             for y in range(self.width):
                 self.surface.set_at((x + self.topleft[0], y + self.topleft[0]), self.data[x][y])
+
+
+def quit_callback():
+    global Done
+    Done = True
 
 
 def newWhiteCircle():
@@ -75,52 +112,30 @@ def getInput():
         sys.stdout.flush()  # get stuff to the console
     return False
 
-
-#app = Window(root)
-input_file = gui.Input()
-
-def open_file_browser(arg):
-    d = gui.FileDialog()
-    d.connect(gui.CHANGE, handle_file_browser_closed, d)
-    d.open()
-
-
-def handle_file_browser_closed(dlg):
-    if dlg.value: input_file.value = dlg.value
-
 def main():
     # initialise pygame
-    """pygame.init()
-    ScreenSize = (700, 400)
-    surface = pygame.display.set_mode(ScreenSize)"""
-    # initialise tkinter
 
-    #root.wm_title("Tkinter window")
+    root.wm_title("Tkinter window")
+    root.protocol("WM_DELETE_WINDOW", quit_callback)
     surface.fill((255, 255, 255))
-    b = gui.Button("Browse...")
-    b.connect(gui.CLICK, open_file_browser, None)
-    #surface.blit(surface, b)
-    #thread = Thread(target=updatetk, args=())
-    #thread.start()
-    #newWhiteCircle()
-    # main loop
+
     done = False
     while not done:
-        for event in pygame.event.get():
-            if event.type == QUIT:
-                print("hejsan")
+        try:
+            app.update()
+            if getInput():
                 done = True
-            if event.type == MOUSEBUTTONDOWN:
-                if event.button == 1:
-                    print("hej")
-                    open_file_browser(0)
-                    #handleMouseinput(surface)
-        """try:
-            getInput()
         except:
-            print("dialog error")"""
-        pygame.display.update()
+            print("dialog error")
+        pygame.display.flip()
 
+
+root = Tk()
+pygame.init()
+ScreenSize = (700, 400)
+surface = pygame.display.set_mode(ScreenSize)
+objects = []
+app = Window(root)
 
 if __name__ == '__main__':
     main()

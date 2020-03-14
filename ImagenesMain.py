@@ -8,12 +8,9 @@ from pygame.locals import *
 import struct
 import binascii
 import array
+from threading import Thread
+from queue import Queue
 
-root = Tk()
-pygame.init()
-ScreenSize = (700, 400)
-surface = pygame.display.set_mode(ScreenSize)
-objects = []
 
 class PPM_Exception(Exception):
     def __init__(self, value):
@@ -153,9 +150,12 @@ class Image:
         self.topleft = topleft
 
     def draw(self):
+        surface = pygame.display.get_surface()
+        print(self.width)
+        print(self.height)
         for x in range(self.height):
             for y in range(self.width):
-                self.surface.set_at((x + self.topleft[0], y + self.topleft[0]), self.data[x][y])
+                surface.set_at((x + self.topleft[0], y + self.topleft[0]), self.data[x][y])
 
     def get_red_band(self):
         data = []
@@ -304,16 +304,19 @@ def checkOnImage(x, y):
 
 def handleMouseinput(surface, app):
     x, y = pygame.mouse.get_pos()
-    clickedim = checkOnImage(x, y)
-    if clickedim:
-        app.setValueEntry(x-50, y-50, clickedim.data[x-50][y-50])
-    print(x, y)
+    surface = pygame.display.get_surface()
+
+    #clickedim = checkOnImage(x, y)
+    #if clickedim:
+    #    app.setValueEntry(x-50, y-50, clickedim.data[x-50][y-50])
+    print(surface.get_at((x,y)))
 
 
 def GetInput(surface, app):
     for event in pygame.event.get():
         if event.type == QUIT:
             return True
+        print(event.type)
         if event.type == MOUSEBUTTONDOWN:
             if event.button == 1:
                 print("mouse 1")
@@ -353,8 +356,9 @@ def newWhiteCircle():
             else:
                 row.append((0, 0, 0))
         data.append(row)
-    image = Image(data, 200, 200, "type", surface, topleft)
+    image = Image(data, 200, 200, "type", pygame.display.get_surface(), topleft)
     image.draw()
+
 
 
 def main():
@@ -364,29 +368,32 @@ def main():
     surface = pygame.display.set_mode(ScreenSize)"""
     # initialise tkinter
 
-    app = Window(root)
-
     root.wm_title("Tkinter window")
     root.protocol("WM_DELETE_WINDOW", quit_callback)
     surface.fill((255, 255, 255))
     #blackImage = newBlackImage(200, 200, surface)
-    #blackImage = newWhiteCircle()
+    #newWhiteCircle()
     #objects.append(blackImage)
 
-
-    gameframe = 0
+    """thread = Thread(target=tkupdate)
+    thread.daemon = True
+    thread.start()"""
     # main loop
     while not Done:
-
         try:
             app.update()
         except:
             print("dialog error")
         if GetInput(surface, app):  # input event can also comes from diaglog
             break
-        gameframe += 1
         pygame.display.update()
     app.destroy()
 
+root = Tk()
+pygame.init()
+ScreenSize = (700, 400)
+surface = pygame.display.set_mode(ScreenSize)
+objects = []
+app = Window(root)
 
 if __name__ == '__main__': main()

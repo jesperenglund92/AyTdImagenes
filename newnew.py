@@ -26,7 +26,7 @@ class AboutDialog(gui.Dialog):
         doc.br(space[1])
 
         doc.block(align=-1)
-        doc.add(gui.Image("cuzco.png"), align=1)
+        doc.add(gui.Image("testing-images/cuzco.png"), align=1)
         for word in """Cuzco's Paint is a revolutionary new paint program it has all the awesome features that you need to paint really great pictures.""".split(
                 " "):
             doc.add(gui.Label(word))
@@ -188,7 +188,7 @@ class HelpDialog(gui.Dialog):
         space = title.style.font.size(" ")
 
         doc.block(align=-1)
-        doc.add(gui.Image("cuzco.png"), align=1)
+        doc.add(gui.Image("testing-images/cuzco.png"), align=1)
         for word in """Cuzco's Paint is a revolutionary new paint program it has all the awesome features that you need to paint really great pictures.""".split(
                 " "):
             doc.add(gui.Label(word))
@@ -278,7 +278,7 @@ class Painter(gui.Widget):
 
         self.surface = None
         self.state = 0
-        self.cuzco = pygame.image.load("cuzco.png")
+        self.cuzco = pygame.image.load("testing-images/cuzco.png")
 
     def init(self, v):
         self.surface = pygame.Surface((int(v['width']), int(v['height'])))
