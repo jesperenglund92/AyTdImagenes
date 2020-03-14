@@ -1,15 +1,59 @@
 import math
 
-from tkinter import filedialog
+from tkinter import filedialog, font
 from tkinter import *
 import pygame
 import sys
 from pygame.locals import *
+from ATIImage import *
 import struct
 import binascii
 import array
 
 root = Tk()
+root.geometry('300x200')
+
+editableImage = ATIImage()
+originalImage = ATIImage()
+
+
+class ImageSelection(object):
+    def __init__(self, posinitial=[0, 0], posfinal=[0, 0]):
+        self.posini = posinitial
+        self.posfin = posfinal
+        self.bottonrigth = [max(posinitial[0], posfinal[0]), max(posinitial[1], posfinal[1])]
+        self.bottonleft = [min(posinitial[0], posfinal[0]), min(posinitial[1], posfinal[1])]
+        self.active = bool(False)
+
+    def set_final(self, posfin):
+        self.posfin = posfin
+        self.updatePositions()
+
+    def set_initial(self, posini):
+        self.posini = posini
+        self.updatePositions()
+
+    def get_final(self):
+        return self.posfin
+
+    def get_initial(self):
+        return self.posini
+
+    def draw(self):
+        pass
+
+    def updatePositions(self):
+        self.bottonrigth = [max(self.posini[0], self.posfin[0]), max(self.posini[1], self.posfin[1])]
+        self.bottonleft = [min(self.posini[0], self.posfin[0]), min(self.posini[1], self.posfin[1])]
+
+    def is_active(self):
+        return self.active
+
+    def set_active(self, active):
+        self.active = active
+
+
+selection = ImageSelection()
 
 
 class PPM_Exception(Exception):
@@ -35,8 +79,9 @@ class Window(Frame):
         fileMenu.add_command(label="Exit", command=self.exitProgram)
         menu.add_cascade(label="File", menu=fileMenu)
         editMenu = Menu(menu)
-        editMenu.add_command(label="Get value", command=getValue)
+
         editMenu.add_command(label="Edit value")
+        editMenu.add_command(label="Select", command=openSelectWindow)
         menu.add_cascade(label="Edit", menu=editMenu)
 
         Label(master, text="x: ").grid(row=0, column=0)
@@ -55,8 +100,8 @@ class Window(Frame):
     def setValueEntry(self, x, y, value):
         self.xLabel['text'] = x
         self.yLabel['text'] = y
-        self.valueEntry.delete(0,END)
-        self.valueEntry.insert(0,value)
+        self.valueEntry.delete(0, END)
+        self.valueEntry.insert(0, value)
 
 
 def loadPpm(file):
@@ -68,8 +113,8 @@ def loadPpm(file):
         count = count + 1
         if count == 1:  # Magic num info
             magicNum = line.strip()
-            if magicNum != 'P2' and magicNum != 'P6':
-                print('Not a valid PGM file')
+            if magicNum != 'P2' or magicNum != 'P5':
+                print('Not a valid PPM file')
         elif count == 2:  # Width and Height
             [width, height] = (line.strip()).split()
             width = int(width)
@@ -77,7 +122,7 @@ def loadPpm(file):
         elif count == 3:  # Max gray level
             maxVal = int(line.strip())
     image = []
-    surface = pygame.display.set_mode((width, height))
+    # surface = pygame.display.set_mode((width, height))
     for y in range(height):
         tmpList = []
         for x in range(width):
@@ -87,32 +132,147 @@ def loadPpm(file):
                             ])
         image.append(tmpList)
 
-    for y1 in range(0, height):
-        for x1 in range(0, width):
-            surface.set_at((x1, y1), image[y1][x1])
+    editableImage.data = image
+    editableImage.width = width
+    editableImage.height = height
+
+    originalImage.data = image
+    originalImage.width = width
+    originalImage.height = height
+
+
+def savePpm(file):
+    image = editableImage.get_data()
+    width = editableImage.get_size()[0]
+    height = editableImage.get_size()[1]
+    ## TODO: Write headers
+
+    for y in range(height):
+        for x in range(width):
+            file.write(int.to_bytes(image[x][y][0], byteorder="big"))
+            file.write(int.to_bytes(image[x][y][1], byteorder="big"))
+            file.write(int.to_bytes(image[x][y][2], byteorder="big"))
     pass
 
 
 def loadPgm(file):
+    count = 0
+    while count < 3:
+        line = file.readline()
+        if line[0] == '#':  # Ignore comments
+            continue
+        count = count + 1
+        if count == 1:  # Magic num info
+            magicNum = line.strip()
+            if magicNum != 'P2' or magicNum != 'P6':
+                print('Not a valid PPM file')
+        elif count == 2:  # Width and Height
+            [width, height] = (line.strip()).split()
+            width = int(width)
+            height = int(height)
+        elif count == 3:  # Max gray level
+            maxVal = int(line.strip())
+    image = []
+    for y in range(height):
+        tmpList = []
+        for x in range(width):
+            color = int.from_bytes(file.read(1), byteorder="big")
+            tmpList.append([color, color, color])
+        image.append(tmpList)
+
+    editableImage.data = image
+    editableImage.width = width
+    editableImage.height = height
+
+    originalImage.data = image
+    originalImage.width = width
+    originalImage.height = height
+
+
+def savePgm(file):
+    image = editableImage.get_data()
+    width = editableImage.get_size()[0]
+    height = editableImage.get_size()[1]
+    ## TODO: Write headers
+
+    for y in range(height):
+        for x in range(width):
+            file.write(int.to_bytes(image[x][y], byteorder="big"))
     pass
+
+
+class RawWindow:
+    def __init__(self, file):
+
+        self.window = Tk()
+        self.window.focus_set()
+
+        self.file = file
+        print(self.file.name)
+        fuente = font.Font(weight="bold")
+
+        self.lblSelection = Label(self.window, text="Select Raw Size", font=fuente).grid(row=4)
+        self.lblInitial = Label(self.window, text="Width").grid(row=5)
+        self.lblFinal = Label(self.window, text="Height").grid(row=6)
+
+        self.width = StringVar()
+        self.height = StringVar()
+
+        self.txtWidth = Entry(self.window, textvariable=self.width)
+        self.txtHeight = Entry(self.window, textvariable=self.height)
+        self.txtWidth.grid(row=5, column=1)
+        self.txtHeight.grid(row=6, column=1)
+
+        self.button = Button(self.window, text="Open raw", command=self.openRawImage)
+        self.button.grid(row=8)
+
+    def openRawImage(self):
+        print("Width: " + self.txtWidth.get() + " ; Height: " + self.txtHeight.get())
+
+        width = int(self.txtWidth.get())
+        height = int(self.txtHeight.get())
+
+        file = open(self.file.name, "rb")
+        image = []
+        surface = pygame.display.set_mode((width, height))
+
+        for y in range(height):
+            tmpList = []
+            for x in range(width):
+                color = int.from_bytes(file.read(1), byteorder="big")
+
+                surface.set_at((x, y), (color, color, color))
+                tmpList.append([color, color, color])
+            image.append(tmpList)
+        self.window.destroy()
+
+        editableImage.height = height
+        editableImage.width = width
+        editableImage.data = image
+
+        originalImage.height = height
+        originalImage.width = width
+        originalImage.data = image
+        printImages()
+        file.close()
 
 
 def loadRaw(file):
-    pass
+    window = RawWindow(file)
 
 
-def getValue():
+def saveRaw(file):
+    image = editableImage.get_data()
+    width = editableImage.get_size()[0]
+    height = editableImage.get_size()[1]
+
+    # surface = pygame.display.set_mode((width, height))
+    for y in range(height):
+        for x in range(width):
+            color = int.to_bytes(image[x][y], byteorder="big")
+            file.write(color)
     pass
 
-def saveFile():
-    pass
-    """
-    f = filedialog.asksaveasfile(mode='w', defaultextension=".raw")
-    if f:
-        with open('blue_red_example.ppm', 'wb') as f:
-            f.write(bytearray(ppm_header, 'ascii'))
-            image.tofile(f)
-    f.close()"""
 
 def openFile():
     ftypes = [
@@ -124,79 +284,197 @@ def openFile():
     filename = filedialog.askopenfilename(initialdir="/", title="Select file", filetypes=ftypes)
     if filename:
         file = open(filename, "rb")
+
         if filename.lower().endswith(('.raw')):
+            editableImage.type = '.raw'
+            originalImage.type = '.raw'
             loadRaw(file)
         if filename.lower().endswith(('.pgm')):
+            editableImage.type = '.pgm'
+            editableImage.type = '.pgm'
             loadPgm(file)
+            printImages()
+
         if filename.lower().endswith(('.ppm')):
+            editableImage.type = '.ppm'
+            editableImage.type = '.ppm'
             loadPpm(file)
+            printImages()
         file.close()
+
     else:
         print("cancelled")
 
 
-class Image:
-    def __init__(self, data, width, height, type, surface, topleft=None):
-        self.data = data
-        self.width = width
-        self.height = height
-        self.type = type
-        self.surface = surface
-        self.topleft = topleft
+def printImages():
+    editableImage.topleft = [20, 20]
+    originalImage.topleft = [20 + editableImage.width + 20, 20]
+    pygame.display.set_mode((60 + editableImage.width * 2, 40 + editableImage.height))
 
-    def draw(self):
-        for x in range(self.height):
-            for y in range(self.width):
-                self.surface.set_at((x + self.topleft[0], y + self.topleft[0]), self.data[x][y])
+    rect = Rectangle([18, 18], [22 + editableImage.width, 22 + editableImage.height], border=2, color=[0, 255, 0])
 
-    def get_red_band(self):
-        data = []
-        for y in range(self.height):
-            tmpList = []
-            for x in range(self.width):
-                tmpList.append(self.data[x][y][0])
-            data.append(tmpList)
-        return data
+    drawATIImage(editableImage)
+    drawATIImage(originalImage)
 
-    def get_blue_band(self):
-        data = []
-        for y in range(self.height):
-            tmpList = []
-            for x in range(self.width):
-                tmpList.append(self.data[x][y][2])
-            data.append(tmpList)
-        return data
 
-    def get_green_band(self):
-        data = []
-        for y in range(self.height):
-            tmpList = []
-            for x in range(self.width):
-                tmpList.append(self.data[x][y][1])
-            data.append(tmpList)
-        return data
+def saveFile():
+    file = filedialog.asksaveasfile(mode='w', defaultextension=editableImage.get_type())
+    if file:
+        if file.name.lower().endswith(('.raw')):
+            saveRaw(file)
+        if file.name.lower().endswith(('.pgm')):
+            savePgm(file)
+        if file.name.lower().endswith(('.ppm')):
+            savePpm(file)
+    pass
+    """
+    f = filedialog.asksaveasfile(mode='w', defaultextension=".raw")
+    if f:
+        with open('blue_red_example.ppm', 'wb') as f:
+            f.write(bytearray(ppm_header, 'ascii'))
+            image.tofile(f)
+    f.close()"""
 
-class Selection:
-    def __init__(self, posinitial, posfinal):
-        self.posini = posinitial
-        self.posfin = posfinal
-        self.bottonrigth = [max(posinitial[0], posfinal[0]), max(posinitial[1], posfinal[1])]
-        self.bottonleft = [min(posinitial[0], posfinal[0]), min(posinitial[1], posfinal[1])]
 
-    def set_final(self, posfin):
-        self.posfin = posfin
-        self.updatePositions()
+def drawATIImage(image):
+    height = image.height
+    width = image.width
+    surface = pygame.display.get_surface()
+    for x in range(width):
+        for y in range(height):
+            surface.set_at((x + image.topleft[0], y + image.topleft[1]), image.get_at([x, y]))
 
-    def set_initial(self, posini):
-        self.posini = posini
-        self.updatePositions()
 
-    def draw(self):
-        pass
+class SelectionWindow():
+    def __init__(self):
+        self.selectionWindow = Tk()
+        self.selectionWindow.focus_set()
+
+        self.lblSelection = Label(self.selectionWindow, text="Selection").grid(row=4)
+        self.lblInitial = Label(self.selectionWindow, text="TopLeft").grid(row=5)
+        self.lblFinal = Label(self.selectionWindow, text="TopLeft").grid(row=6)
+
+        self.x1 = StringVar()
+        self.y1 = StringVar()
+        self.x2 = StringVar()
+        self.y2 = StringVar()
+
+        self.txtInitialX = Entry(self.selectionWindow, textvariable=self.x1)
+        self.txtInitialY = Entry(self.selectionWindow, textvariable=self.y1)
+        self.txtLastX = Entry(self.selectionWindow, textvariable=self.x2)
+        self.txtLastY = Entry(self.selectionWindow, textvariable=self.y2)
+        self.txtInitialX.grid(row=5, column=1)
+        self.txtInitialY.grid(row=5, column=2)
+        self.txtLastX.grid(row=6, column=1)
+        self.txtLastY.grid(row=6, column=2)
+
+        self.button = Button(self.selectionWindow, text="Select", command=self.printvalues)
+        self.button.grid(row=8)
+
+    def printvalues(self):
+        print(self.x1.get(), self.y1.get())
+        print(self.txtInitialX.get(), self.txtInitialY.get())
+
+
+def openSelectWindow():
+    selectionWindow = SelectionWindow()
+
+    """selectionWindow.geometry("200x200")"""
+    # selectionWindow.title("Selection")
+    # selectionWindow.focus_set()
+
+    """display = Label(selectionWindow, text="Selection Window")
+    display.pack()
+    Label(selectionWindow, text="x: ").grid(row=0, column=0)
+    Label(selectionWindow, text="y: ").grid(row=1, column=0)"""
+
+    # lblSelection = Label(selectionWindow, text="Selection").grid(row=4)
+    # lblInitial = Label(selectionWindow, text="TopLeft").grid(row=5)
+    # lblFinal = Label(selectionWindow, text="TopLeft").grid(row=6)
+
+    # txtInitialX = Entry(selectionWindow, textvariable=x1)
+    # txtInitialY = Entry(selectionWindow, textvariable=y1)
+
+    """txtLastX = Entry(selectionWindow, textvariable=x2)
+    txtLastY = Entry(selectionWindow, textvariable=y2)
+
+    txtInitialX.grid(row=5, column=1)
+    txtInitialY.grid(row=5, column=2)
+    txtLastX.grid(row=6, column=1)
+    txtLastY.grid(row=6, column=2)
+    button = Button(selectionWindow, text="Armar selection", command=printvalues)
+    button.grid(row=8)
+    """
+
+
+def openRAWWindow():
+    rawWindow = Tk()
+    rawWindow.title("Select width and heigth")
+    rawWindow.focus_set()
+    lblSelection = Label(rawWindow, text="width").grid(row=1)
+    lblInitial = Label(rawWindow, text="height").grid(row=3)
+
+    """
+    txtInitialX.pack()
+    txtInitialY.pack()
+    
+    label = Label(selectionWindow, text="Position: ").grid(row=7, column=0).pack()
+    res = Label(selectionWindow).grid(row=7, column = 1)
+    res.pack()"""
+
+
+class Rectangle:
+    def __init__(self, topLeft=None, bottonRight=None, border=1, color=None):
+        self.topLeft = topLeft
+        self.bottonRight = bottonRight
+        self.border = border
+        self.color = [0, 0, 0]
 
     def updatePositions(self):
-        self.bottonrigth = [max(self.posini[0], self.posfin[0]), max(self.posini[1], self.posfin[1])]
-        self.bottonleft = [min(self.posini[0], self.posfin[0]), min(self.posini[1], self.posfin[1])]
+        auxBR = [max(self.topLeft[0], self.bottonRight[0]), max(self.topLeft[1], self.bottonRight[1])]
+        auxTL = [min(self.topLeft[0], self.bottonRight[0]), min(self.topLeft[1], self.bottonRight[1])]
+        self.bottonRight = auxBR
+        self.topLeft = auxTL
+
+
+def drawRectangle(rectangle):
+    surface = pygame.display.get_surface()
+    top = rectangle.topLeft[1]
+    left = rectangle.topLeft[0]
+    botton = rectangle.bottonRight[1]
+    right = rectangle.bottonRight[0]
+    border = rectangle.border
+
+    for b in range(border):
+        for x in range(right - left):
+            surface.set_at((left + x, top + b), rectangle.color)
+            surface.set_at((left + x, botton - b), rectangle.color)
+
+        for y in range(botton - top):
+            surface.set_at((left + b, y + top), rectangle.color)
+            surface.set_at((right - b, y + top), rectangle.color)
+
+
+class ImageSelection:
+    def __init__(self, topLeft=None, bottonRight=None, color=None):
+        self.topLeft = topLeft
+        self.bottonRight = bottonRight
+        self.color = color
+
+    def set_topLeft(self, topLeft):
+        self.topLeft = topLeft
+        self.updatePositions()
+
+    def set_bottonRight(self, bottonRight):
+        self.bottonRight = bottonRight
+        self.updatePositions()
+
+    def updatePositions(self):
+        auxBR = [max(self.topLeft[0], self.bottonRight[0]), max(self.topLeft[1], self.bottonRight[1])]
+        auxTL = [min(self.topLeft[0], self.bottonRight[0]), min(self.topLeft[1], self.bottonRight[1])]
+        self.bottonRight = auxBR
+        self.topLeft = auxTL
+
 
 class square:
     def __init__(self, radius, pos):
@@ -205,6 +483,7 @@ class square:
 
     def belong2circle(self, point):
         return math.pow(point[0] - self.pos[0], 2) + math.pow(point[1] - self.pos[1], 2) <= math.pow(self.radius, 2)
+
 
 # Transform RGB Method to HSV
 def rgbcolor2hsvcolor(rgbdata):
@@ -215,7 +494,7 @@ def rgbcolor2hsvcolor(rgbdata):
     maxcolor = max(r, g, b)
     mincolor = min(r, g, b)
 
-    s,v = 0, 0
+    s, v = 0, 0
 
     if maxcolor == mincolor:
         h = "n/a"
@@ -234,10 +513,11 @@ def rgbcolor2hsvcolor(rgbdata):
     if maxcolor == 0:
         s = 0
     else:
-        s = 1 - mincolor/maxcolor
+        s = 1 - mincolor / maxcolor
 
     v = maxcolor
     return [h, s, v]
+
 
 def rgb2hsv(imageData, width, height):
     hsvData = []
@@ -248,6 +528,7 @@ def rgb2hsv(imageData, width, height):
         hsvData.append(tmpList)
     return hsvData
 
+
 def hsvcolor2rgbcolor(hsvdata):
     h = hsvdata[0]
     s = hsvdata[1]
@@ -257,7 +538,7 @@ def hsvcolor2rgbcolor(hsvdata):
         h = math.fmod(h, 360)
 
     auxH = math.ceil(h / 60) % 6
-    f = ((math.ceil(h)/60) % 6) - auxH
+    f = ((math.ceil(h) / 60) % 6) - auxH
     p = v * (1 - s)
     q = v * (1 - f * s)
     t = v * (1 - (1 - f) * s)
@@ -276,6 +557,7 @@ def hsvcolor2rgbcolor(hsvdata):
         return [v, p, q]
     return "n/a"
 
+
 def hsv2rgb(imageData, width, height):
     rgbData = []
     for y in range(height):
@@ -291,20 +573,21 @@ def checkOnImage(x, y, blackImage):
         return True
 
 
-def handleMouseinput(surface, app, blackImage):
+def handleMouseinput(surface, app):
     x, y = pygame.mouse.get_pos()
-    if checkOnImage(x, y, blackImage):
-        app.setValueEntry(x-50, y-50, blackImage.data[x-50][y-50])
-    print(x, y)
+    surface = pygame.display.get_surface();
+    """if checkOnImage(x, y, blackImage):
+        app.setValueEntry(x-50, y-50, blackImage.data[x-50][y-50])"""
+    print(surface.get_at((x, y)))
 
 
-def GetInput(surface, app, blackImage):
+def GetInput(surface, app):
     for event in pygame.event.get():
         if event.type == QUIT:
             return True
         if event.type == MOUSEBUTTONDOWN:
             if event.button == 1:
-                handleMouseinput(surface, app, blackImage)
+                handleMouseinput(surface, app)
         sys.stdout.flush()  # get stuff to the console
     return False
 
@@ -317,19 +600,20 @@ def quit_callback():
     Done = True
 
 
-def newBlackImage (width, height, surface):
+"""def newBlackImage (width, height, surface):
     data = []
     for i in range(height):
         row = []
         for j in range(width):
             row.append((0,0,0))
         data.append(row)
-    return Image(data, width, height, "type", surface, (50, 50))
+    return Image(data, width, height, "type", surface, (50, 50))"""
+
 
 def main():
     # initialise pygame
     pygame.init()
-    ScreenSize = (700, 400)
+    ScreenSize = (1, 1)
     surface = pygame.display.set_mode(ScreenSize)
     # initialise tkinter
 
@@ -338,8 +622,7 @@ def main():
     root.wm_title("Tkinter window")
     root.protocol("WM_DELETE_WINDOW", quit_callback)
     surface.fill((255, 255, 255))
-    blackImage = newBlackImage(300, 300, surface)
-
+    # blackImage = newBlackImage(300, 300, surface)
 
     gameframe = 0
     # main loop
@@ -348,9 +631,9 @@ def main():
             app.update()
         except:
             print("dialog error")
-        if GetInput(surface, app, blackImage):  # input event can also comes from diaglog
+        if GetInput(surface, app):  # input event can also comes from diaglog
             break
-        blackImage.draw()
+        # blackImage.draw()
         gameframe += 1
         pygame.display.update()
     app.destroy()
