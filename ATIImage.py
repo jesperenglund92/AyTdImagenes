@@ -43,16 +43,3 @@ class ATIImage(object):
 
     def set_at(self, pos, color):
         self.data[pos[1]][pos[0]] = color
-    """
-    def get_data(self):
-        return self.data
-
-    def get_type(self):
-        return self.type
-
-    def get_size(self):
-        return [self.width, self.height]
-
-    def set_size(self, size):
-        self.width = size[0]
-        self.height = size[1]"""
