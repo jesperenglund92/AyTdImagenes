@@ -137,25 +137,29 @@ def handleMouseinput():
         app.setValueEntry(x - 50, y - 50, imClicked.data[x - 50][y - 50])
 
 dragging = False
+startx = None
+starty = None
 
 def getInput():
     global dragging
+    global startx
+    global starty
     for event in pygame.event.get():
         if event.type == QUIT:
             return True
         elif event.type == MOUSEBUTTONDOWN:
             if event.button == 1:
+                print("mousedown")
                 handleMouseinput()
-                """x, y = pygame.mouse.get_pos()
-                makeselection(x, y, x, y)"""
                 dragging = True
         elif event.type == MOUSEBUTTONUP:
+            print("mouseup")
             if event.button == 1:
                 dragging = False
         elif event.type == MOUSEMOTION:
             if dragging:
-                pass
-                #makeselection(x, y, x, y)
+                x, y = pygame.mouse.get_pos()
+                makeselection(startx, starty, x, y)
         sys.stdout.flush()  # get stuff to the console
     return False
 
