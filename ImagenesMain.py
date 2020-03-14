@@ -262,16 +262,18 @@ def loadRaw(file):
 
 
 def saveRaw(file):
-    image = editableImage.get_data()
-    width = editableImage.get_size()[0]
-    height = editableImage.get_size()[1]
-
+    width = editableImage.width
+    height = editableImage.height
     # surface = pygame.display.set_mode((width, height))
     for y in range(height):
         for x in range(width):
-            color = int.to_bytes(image[x][y], byteorder="big")
-            file.write(color)
-    pass
+            intColor = (editableImage.get_at([x, y])[0])
+        
+
+            # color = (editableImage.get_at([x, y])[0]).to_bytes(1, byteorder="big")
+            # color = int.to_bytes(editableImage.get_at([x, y])[0], byteorder="big")
+
+            #file.write(color)
 
 
 def openFile():
@@ -318,7 +320,7 @@ def printImages():
 
 
 def saveFile():
-    file = filedialog.asksaveasfile(mode='w', defaultextension=editableImage.get_type())
+    file = filedialog.asksaveasfile(mode='wb', defaultextension=editableImage.type)
     if file:
         if file.name.lower().endswith(('.raw')):
             saveRaw(file)
@@ -326,6 +328,7 @@ def saveFile():
             savePgm(file)
         if file.name.lower().endswith(('.ppm')):
             savePpm(file)
+        file.close()
     pass
     """
     f = filedialog.asksaveasfile(mode='w', defaultextension=".raw")
