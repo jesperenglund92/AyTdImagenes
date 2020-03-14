@@ -1,9 +1,10 @@
 /bin
 *.class
-
+/pgu-master
+.DS_store
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/
-
+/testing-images
 # Folders
 out/
 target/
