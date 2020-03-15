@@ -28,25 +28,36 @@ class Window(Frame):
         menu = Menu(self.master)
         self.master.config(menu=menu)
 
-        fileMenu = Menu(menu)
+        file_menu = Menu(menu)
 
-        newSubmenu = Menu(fileMenu)
-        newSubmenu.add_command(label="circle", command=newWhiteCircle)
-        newSubmenu.add_command(label="Square", command=newWhiteSquare)
+        new_submenu = Menu(file_menu)
+        new_submenu.add_command(label="circle", command=newWhiteCircle)
+        new_submenu.add_command(label="Square", command=newWhiteSquare)
 
-        fileMenu.add_cascade(label="New File", menu=newSubmenu)
-        fileMenu.add_command(label="Load Image", command=openFile)
-        fileMenu.add_command(label="Save File", command=saveFile)
-        fileMenu.add_command(label="Exit", command=self.exitProgram)
+        file_menu.add_cascade(label="New File", menu=new_submenu)
+        file_menu.add_command(label="Load Image", command=openFile)
+        file_menu.add_command(label="Save File", command=saveFile, state="disabled")
+        file_menu.add_command(label="Exit", command=self.exitProgram)
 
-        menu.add_cascade(label="File", menu=fileMenu)
-        editMenu = Menu(menu)
 
-        menu.add_cascade(label="Edit", menu=editMenu)
+        menu.add_cascade(label="File", menu=file_menu)
+        edit_menu = Menu(menu)
+        edit_menu.add_command(label="Copy", command=self.copy_window)
+        edit_menu.add_command(label="Operations", command=self.operations_window)
+        edit_menu.add_command(label="Threshold Image", command=self.threshold_window)
+        edit_menu.add_command(label="Equalize Image", command=self.equalization_window)
+        edit_menu.add_command(label="Negative", command=self.make_negative)
+        menu.add_cascade(label="Edit", menu=edit_menu)
+
+        view_menu = Menu(menu)
+        view_menu.add_command(label="HSV Color")
+        view_menu.add_command(label="Histogram", command=self.histogram_window)
+        menu.add_cascade(label="View", menu = view_menu)
 
         Label(master, text="x: ").grid(row=0, column=0)
         Label(master, text="y: ").grid(row=1, column=0)
         Label(master, text="color: ").grid(row=2, column=0)
+
         self.xLabel = Label(master, text="0")
         self.xLabel.grid(row=0, column=1)
         self.yLabel = Label(master, text="0")
@@ -67,6 +78,56 @@ class Window(Frame):
         self.valueEntry.delete(0, END)
         self.valueEntry.insert(0, value)
 
+    def copy_window(self):
+        window = self.__CopyWindow()
+
+    class __CopyWindow():
+        def __init__(self):
+            self.window = Tk()
+            self.window.focus_set()
+            self.window.title("Copy Image")
+            pass
+
+    def operations_window(self):
+        window = self.__OperationsWindow()
+
+    class __OperationsWindow():
+        def __init__(self):
+            self.window = Tk()
+            self.window.focus_set()
+            self.window.title("Copy Image")
+            pass
+
+    def threshold_window(self):
+        window = self._Threshold_window()
+
+    class _ThresholdWindow():
+        def __init__(self):
+            self.window = Tk()
+            self.window.focus_set()
+            self.window.title("Threshold Image")
+            pass
+
+    def equalization_window(self):
+        window = self.__EqualizationWindow()
+
+    class __EqualizationWindow():
+        def __init__(self):
+            self.window = Tk()
+            self.window.focus_set()
+            self.window.title("Threshold Image")
+
+    def make_negative(self):
+        editableImage.negative()
+
+    def histogram_window(self):
+        window = self.__HistogramWindow()
+
+    class __HistogramWindow():
+        def __init__(self):
+            self.window = Tk()
+            self.window.focus_set()
+            self.window.title("Histogram window")
 
 def loadPpm(file):
     count = 0
@@ -256,25 +317,23 @@ def openFile():
             editableImage.type = '.pgm'
             editableImage.type = '.pgm'
             loadPgm(file)
-            printImages()
+            drawImages()
 
         if filename.lower().endswith(('.ppm')):
             editableImage.type = '.ppm'
             editableImage.type = '.ppm'
             loadPpm(file)
-            printImages()
+            drawImages()
         file.close()
 
     else:
         print("cancelled")
 
 
-def printImages():
+def drawImages():
     editableImage.topleft = [20, 20]
     originalImage.topleft = [20 + editableImage.width + 20, 20]
     pygame.display.set_mode((60 + editableImage.width * 2, 40 + editableImage.height))
-
-
     drawATIImage(editableImage)
     drawATIImage(originalImage)
 
@@ -372,7 +431,7 @@ def checkOnImage(x, y):
                 return obj
 
 
-def drawSelection2(x, y, x2, y2, color):
+def drawSelection(x, y, x2, y2, color):
     top = min(y, y2)
     left = min(x, x2)
     right = max(x, x2)
@@ -386,12 +445,13 @@ def drawSelection2(x, y, x2, y2, color):
         surface.set_at((left, top + y), color)
         surface.set_at((right, top + y), color)
 
-def makeselection(selection):
-    drawSelection2(selection.x, selection.y, selection.prevx, selection.prevy, (255, 255, 255))
-    drawSelection2(selection.x, selection.y, selection.newx, selection.newy, (0, 0, 255))
 
-    #rect = (x, y, x2-x, y2-y)
-    #pygame.draw.rect(surface, (0,0,255), (x, y, x2-x, y2-y))
+def makeselection(selection):
+    drawSelection(selection.x, selection.y, selection.prevx, selection.prevy, (255, 255, 255))
+    drawSelection(selection.x, selection.y, selection.newx, selection.newy, (0, 0, 255))
+
+    # rect = (x, y, x2-x, y2-y)
+    # pygame.draw.rect(surface, (0,0,255), (x, y, x2-x, y2-y))
 
 
 def handleMouseinput():
@@ -399,6 +459,7 @@ def handleMouseinput():
     imClicked = checkOnImage(x, y)
     if imClicked:
         app.setValueEntry(x - 50, y - 50, imClicked.data[x - 50][y - 50])
+
 
 def getInput():
     global dragging
@@ -414,7 +475,8 @@ def getInput():
             if event.button == 1:
                 startx, starty = pygame.mouse.get_pos()
                 if isSelectionActive:
-                    drawSelection2(newselection.x, newselection.y, newselection.newx, newselection.newy, newselection.color)
+                    drawSelection(newselection.x, newselection.y, newselection.newx, newselection.newy,
+                                   newselection.color)
                 newselection.set_startpos((startx, starty))
                 print("mousedown")
                 isSelectionActive = True
@@ -451,9 +513,10 @@ def main():
             done = True
         pygame.display.flip()
 
+
 root = Tk()
 pygame.init()
-ScreenSize = (700, 400)
+ScreenSize = (1, 1)
 surface = pygame.display.set_mode(ScreenSize)
 objects = []
 app = Window(root)
