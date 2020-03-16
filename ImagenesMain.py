@@ -39,7 +39,6 @@ class Window(Frame):
         file_menu.add_command(label="Save File", command=saveFile, state="disabled")
         file_menu.add_command(label="Exit", command=self.exitProgram)
 
-
         menu.add_cascade(label="File", menu=file_menu)
         edit_menu = Menu(menu)
         edit_menu.add_command(label="Copy", command=self.copy_window)
@@ -52,7 +51,7 @@ class Window(Frame):
         view_menu = Menu(menu)
         view_menu.add_command(label="HSV Color")
         view_menu.add_command(label="Histogram", command=self.histogram_window)
-        menu.add_cascade(label="View", menu = view_menu)
+        menu.add_cascade(label="View", menu=view_menu)
 
         Label(master, text="x: ").grid(row=0, column=0)
         Label(master, text="y: ").grid(row=1, column=0)
@@ -129,6 +128,7 @@ class Window(Frame):
             self.window.focus_set()
             self.window.title("Histogram window")
 
+
 def loadPpm(file):
     count = 0
     while count < 3:
@@ -138,7 +138,7 @@ def loadPpm(file):
         count = count + 1
         if count == 1:  # Magic num info
             magicNum = line.strip()
-            if magicNum != 'P2' or magicNum != 'P5':
+            if magicNum != 'P3' or magicNum != 'P6':
                 print('Not a valid PPM file')
         elif count == 2:  # Width and Height
             [width, height] = (line.strip()).split()
@@ -189,7 +189,7 @@ def loadPgm(file):
         count = count + 1
         if count == 1:  # Magic num info
             magicNum = line.strip()
-            if magicNum != 'P2' or magicNum != 'P6':
+            if magicNum != 'P2' or magicNum != 'P5':
                 print('Not a valid PPM file')
         elif count == 2:  # Width and Height
             [width, height] = (line.strip()).split()
@@ -277,7 +277,7 @@ class RawWindow:
         originalImage.height = height
         originalImage.width = width
         originalImage.data = image
-        printImages()
+        drawImages()
         file.close()
 
 
@@ -333,6 +333,9 @@ def openFile():
 def drawImages():
     editableImage.topleft = [20, 20]
     originalImage.topleft = [20 + editableImage.width + 20, 20]
+    editableImage.active = True
+    originalImage.active = False
+
     pygame.display.set_mode((60 + editableImage.width * 2, 40 + editableImage.height))
     drawATIImage(editableImage)
     drawATIImage(originalImage)
@@ -424,13 +427,6 @@ def newWhiteSquare():
     drawATIImage(image)
 
 
-def checkOnImage(x, y):
-    if len(objects) > 0:
-        for obj in objects:
-            if 50 <= x <= obj.width + 50 and 50 <= y <= obj.height + 50:
-                return obj
-
-
 def drawSelection(x, y, x2, y2, color):
     top = min(y, y2)
     left = min(x, x2)
@@ -454,11 +450,27 @@ def makeselection(selection):
     # pygame.draw.rect(surface, (0,0,255), (x, y, x2-x, y2-y))
 
 
+def checkOnImage(x, y):
+    if len(objects) > 0:
+        for obj in objects:
+            if 50 <= x <= obj.width + 50 and 50 <= y <= obj.height + 50:
+                return obj
+
+
 def handleMouseinput():
     x, y = pygame.mouse.get_pos()
     imClicked = checkOnImage(x, y)
     if imClicked:
         app.setValueEntry(x - 50, y - 50, imClicked.data[x - 50][y - 50])
+
+
+def is_click_in_images(x, y):
+    # Tengo posiciones de Top Left y botton rigth. Puedo consultar con cualquier imagen
+    if editableImage.in_display_image((x, y)):
+        return 0
+    if originalImage.in_display_image((x, y)):
+        return 1
+    return -1
 
 
 def getInput():
@@ -473,15 +485,18 @@ def getInput():
             return True
         elif event.type == MOUSEBUTTONDOWN:
             if event.button == 1:
-                startx, starty = pygame.mouse.get_pos()
-                if isSelectionActive:
-                    drawSelection(newselection.x, newselection.y, newselection.newx, newselection.newy,
-                                   newselection.color)
-                newselection.set_startpos((startx, starty))
+                # Hay que revisar que el click sea sobre una de las imagenes
                 print("mousedown")
-                isSelectionActive = True
-                handleMouseinput()
-                dragging = True
+                startx, starty = pygame.mouse.get_pos()
+                newselection.set_image(is_click_in_images(starty, starty)) #
+                if editableImage.active and newselection.image != -1: # and is_click_in_images(startx, starty):
+                    if isSelectionActive:
+                        drawSelection(newselection.x, newselection.y, newselection.newx, newselection.newy,
+                                      newselection.color)
+                    newselection.set_startpos((startx, starty))
+                    isSelectionActive = True
+                    handleMouseinput()
+                    dragging = True
         elif event.type == MOUSEBUTTONUP:
             print("mouseup")
             if event.button == 1:

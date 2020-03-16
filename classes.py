@@ -13,6 +13,7 @@ class square:
 class Selection:
     def __init__(self, color=(255,255,255)):
         self.color = color
+        self.image = -1
 
     def set_startpos(self, startpos):
         self.x = startpos[0]
@@ -25,3 +26,12 @@ class Selection:
         self.prevy = self.newy
         self.newx = newpos[0]
         self.newy = newpos[1]
+
+    def get_top_left(self):
+        return [min(self.x, self.newx), min(self.y, self.newy)]
+
+    def get_botton_right(self):
+        return [max(self.x, self.newx), max(self.y, self.newy)]
+
+    def set_image(self, id):
+        self.image = id

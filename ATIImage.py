@@ -2,7 +2,7 @@ import math
 
 
 class ATIImage(object):
-    def __init__(self, data=None, width=0, height=0, type=0, topleft=None):
+    def __init__(self, data=None, width=0, height=0, type=0, topleft=None, active=False):
         if data is None:
             data = []
         self.data = data
@@ -10,6 +10,17 @@ class ATIImage(object):
         self.height = height
         self.type = type
         self.topleft = topleft
+        self.active = active
+
+    def get_top_left(self):
+        return self.topleft
+
+    def get_botton_right(self):
+        return [self.topleft[0] + self.width, self.topleft[1] + self.height]
+
+    def in_display_image(self, pos):
+        botton_right = self.get_botton_right()
+        return self.topleft[0] <= pos[0] <= botton_right[0] and self.topleft[1] <= pos[1] <= botton_right[1]
 
     def get_red_band(self):
         data = []
