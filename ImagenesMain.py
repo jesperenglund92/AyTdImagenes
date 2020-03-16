@@ -360,9 +360,15 @@ def newWhiteSquare():
             else:
                 row.append((0, 0, 0))
         data.append(row)
-    image = ATIImage(data, 200, 200, "type", (topleft, topleft))
+    editableImage.data = data
+    editableImage.width = 200
+    editableImage.height = 200
+    editableImage.type = "type"
+    editableImage.topleft = (topleft, topleft)
+    drawATIImage(editableImage)
+    """image = ATIImage(data, 200, 200, "type", (topleft, topleft))
     objects.append(image)
-    drawATIImage(image)
+    drawATIImage(image)"""
 
 
 def checkOnImage(x, y):
@@ -377,7 +383,6 @@ def drawSelection2(x, y, x2, y2, color):
     left = min(x, x2)
     right = max(x, x2)
     bottom = max(y, y2)
-
     surface = pygame.display.get_surface()
     for x in range(right - left):
         surface.set_at((x + left, top), color)

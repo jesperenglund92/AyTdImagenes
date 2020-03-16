@@ -1,7 +1,7 @@
 import math
 
 class ATIImage(object):
-    def __init__(self, data=[], width=0, height=0, type=0, topleft=None):
+    def __init__(self, data=None, width=0, height=0, type=0, topleft=None):
         self.data = data
         self.width = width
         self.height = height
