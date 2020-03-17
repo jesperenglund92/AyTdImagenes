@@ -20,7 +20,17 @@ class ATIImage(object):
 
     def in_display_image(self, pos):
         botton_right = self.get_botton_right()
+
+        print("TL = ")
+        print(self.topleft)
+        print("BR = " )
+        print(botton_right)
+        print("pos = ")
+        print(pos)
         return self.topleft[0] <= pos[0] <= botton_right[0] and self.topleft[1] <= pos[1] <= botton_right[1]
+
+    def set_top_left(self, pos):
+        self.topleft = pos
 
     def get_red_band(self):
         data = []
@@ -51,6 +61,24 @@ class ATIImage(object):
 
     def get_at(self, pos):
         return self.data[pos[1]][pos[0]]
+
+    def get_at_display(self, pos):
+        x = pos[0] - self.topleft[0]
+        y = pos[1] - self.topleft[1]
+        if not (0 <= x <= self.width):
+            raise Exception("Invalid position")
+        if not (0 <= y <= self.height - 1):
+            raise Exception("Invalid position")
+        return self.get_at((x, y))
+
+    def set_at_display(self, pos, color):
+        x = pos[0] - self.topleft[0]
+        y = pos[1] - self.topleft[1]
+        if not (0 <= x <= self.width - 1):
+            raise Exception("Invalid position")
+        if not (0 <= y <= self.height - 1):
+            raise Exception("Invalid position")
+        self.set_at((x, y), color)
 
     def set_at(self, pos, color):
         self.data[pos[1]][pos[0]] = color

@@ -33,5 +33,11 @@ class Selection:
     def get_botton_right(self):
         return [max(self.x, self.newx), max(self.y, self.newy)]
 
+    def get_prev_top_left(self):
+        return [min(self.x, self.prevx), min(self.y, self.prevy)]
+
+    def get_prev_botton_right(self):
+        return [max(self.x, self.prevx), max(self.y, self.prevy)]
+
     def set_image(self, id):
         self.image = id
