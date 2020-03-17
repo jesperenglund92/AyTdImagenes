@@ -465,7 +465,7 @@ def drawPreImageSelection(selection):
         surface.set_at((right, top + y), image.get_at_display((right, top + y)))
 
 
-def drawImageSelection(selection):
+def zdrawImageSelection(selection):
     tl = selection.get_top_left()
     br = selection.get_botton_right()
 
@@ -539,8 +539,6 @@ def getInput():
             if event.button == 1:
                 # Hay que revisar que el click sea sobre una de las imagenes
                 print("mousedown")
-                # startx, starty = pygame.mouse.get_pos()
-                # print(pygame.mouse.get_pos())
                 mouse_positon = pygame.mouse.get_pos()
                 newselection.set_image(is_click_in_images(mouse_positon)) #
                 if editableImage.active and newselection.image != -1: # and is_click_in_images(startx, starty):
@@ -559,10 +557,13 @@ def getInput():
                 dragging = False
             lastaction = "mouseup"
         elif event.type == MOUSEMOTION:
-            print("mousemotion")
             if dragging:
-                newselection.set_newpos(pygame.mouse.get_pos())
-                makeselection(newselection)
+                if is_click_in_images(pygame.mouse.get_pos()) == newselection.image:
+                    newselection.set_newpos(pygame.mouse.get_pos())
+                    makeselection(newselection)
+                else:
+                    pass
+
             lastaction="mousemotion"
         sys.stdout.flush()  # get stuff to the console
     return False

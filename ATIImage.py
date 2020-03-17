@@ -65,7 +65,7 @@ class ATIImage(object):
     def get_at_display(self, pos):
         x = pos[0] - self.topleft[0]
         y = pos[1] - self.topleft[1]
-        if not (0 <= x <= self.width):
+        if not (0 <= x <= self.width - 1):
             raise Exception("Invalid position")
         if not (0 <= y <= self.height - 1):
             raise Exception("Invalid position")
