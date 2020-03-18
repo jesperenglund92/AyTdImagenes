@@ -54,4 +54,4 @@ class Selection:
         return br[1] - tl[1] + 1
 
     def get_pixel_count(self):
-        return self.get_width() + " x " + self.get_height()
+        return self.get_width().__str__() + " x " + self.get_height().__str__()

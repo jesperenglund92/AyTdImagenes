@@ -404,8 +404,6 @@ def drawATIImage(image):
             surface.set_at((x + image.topleft[0], y + image.topleft[1]), image.get_at([x, y]))
 
 
-
-
 def quit_callback():
     global Done
     Done = True
@@ -546,6 +544,23 @@ def handleMouseinput():
     if imClicked:
         app.setValueEntry(x - 50, y - 50, imClicked.data[x - 50][y - 50])
 
+def updateSelectionValues(selection):
+    app.selection_pixel_count["text"] = selection.get_pixel_count()
+    image_id = selection.image
+    if image_id != -1:
+        image_selected = get_image_by_id(image_id)
+        if image_selected.image_color_type() == 'g':
+            app.grey_pixel_average["text"] = image_selected\
+                .get_grey_average_display(selection.get_top_left(), selection.get_botton_right())
+        else:
+            app.red_pixel_average["text"] = image_selected\
+                .get_red_average_display(selection.get_top_left(), selection.get_botton_right())
+            app.green_pixel_average["text"] = image_selected\
+                .get_green_average_display(selection.get_top_left(), selection.get_botton_right())
+            app.blue_pixel_average["text"] = image_selected\
+                .get_blue_average_display(selection.get_top_left(), selection.get_botton_right())
+    return
+
 
 def getInput():
     global dragging
@@ -573,6 +588,8 @@ def getInput():
                     newselection.set_startpos(mouse_positon)
                     newselection.set_image(image_click)
 
+                    updateSelectionValues(newselection)
+
                     dragging = True
                     isSelectionActive = True
 
@@ -585,6 +602,7 @@ def getInput():
             if event.button == 1:
                 if lastaction != "mousemotion":
                     isSelectionActive = False
+                    updateSelectionValues(newselection)
                 dragging = False
             lastaction = "mouseup"
         elif event.type == MOUSEMOTION:
@@ -592,6 +610,7 @@ def getInput():
                 if is_click_in_images(pygame.mouse.get_pos()) == newselection.image:
                     newselection.set_newpos(pygame.mouse.get_pos())
                     makeselection(newselection)
+                    updateSelectionValues(newselection)
                 else:
                     pass
             lastaction="mousemotion"
