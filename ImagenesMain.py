@@ -30,17 +30,19 @@ class Window(Frame):
 
         fileMenu = Menu(menu)
 
-        newSubmenu = Menu(fileMenu)
-        newSubmenu.add_command(label="circle", command=newWhiteCircle)
-        newSubmenu.add_command(label="Square", command=newWhiteSquare)
+        fileSubmenu = Menu(fileMenu)
+        fileSubmenu.add_command(label="circle", command=newWhiteCircle)
+        fileSubmenu.add_command(label="Square", command=newWhiteSquare)
 
-        fileMenu.add_cascade(label="New File", menu=newSubmenu)
+        fileMenu.add_cascade(label="New File", menu=fileSubmenu)
         fileMenu.add_command(label="Load Image", command=openFile)
         fileMenu.add_command(label="Save File", command=saveFile)
         fileMenu.add_command(label="Exit", command=self.exitProgram)
 
         menu.add_cascade(label="File", menu=fileMenu)
         editMenu = Menu(menu)
+
+        editMenu.add_command(label="Copy selection", command=copySelection)
 
         menu.add_cascade(label="Edit", menu=editMenu)
 
@@ -67,6 +69,49 @@ class Window(Frame):
         self.valueEntry.delete(0, END)
         self.valueEntry.insert(0, value)
 
+
+def set_image(image, data, width, height, type, topleft, editable):
+    image.data = data
+    image.width = width
+    image.height = height
+    image.type = type
+    image.topleft = topleft
+    image.editable = editable
+    image.values_set = True
+
+
+
+def copySelection():
+    data = []
+    for img in images:
+        if img.values_set:
+            if not img.editable:
+                print("goin in")
+                yiterator = 0
+                for i in range(abs(newselection.newy - newselection.y)):
+                    row = []
+                    if newselection.newy < newselection.y:
+                        y = newselection.newy
+                    else:
+                        y = newselection.y
+                    xiterator = 0
+                    for j in range(abs(newselection.newx - newselection.x)):
+                        if newselection.newx < newselection.x:
+                            x = newselection.newx
+                        else:
+                            x = newselection.x
+                        if img.collidepoint(x + j, y + i):
+                                row.append(img.get_at_screenpos(j + x, y + i))
+                                xiterator += 1
+
+                    if xiterator > 0:
+                        yiterator += 1
+                    if len(row) > 0:
+                        data.append(row)
+    for img in images:
+        if img.editable:
+            set_image(img, data, len(data[0]), len(data), "type", (300, 50), True)
+            drawATIImage(img)
 
 def loadPpm(file):
     count = 0
@@ -323,9 +368,11 @@ def quit_callback():
 def changepixval(x, y, color):
     colorlist = color.split()
     r, g, b = int(colorlist[0]), int(colorlist[1]), int(colorlist[2])
-    for obj in objects:
-        obj.data[x][y] = (r, g, b)
-        drawATIImage(obj)
+    for img in images:
+        if img.collidepoint(x, y):
+            if img.editable:
+                img.data[x][y] = (r, g, b)
+                drawATIImage(img)
 
 
 def newWhiteCircle():
@@ -341,9 +388,8 @@ def newWhiteCircle():
             else:
                 row.append((0, 0, 0))
         data.append(row)
-    image = ATIImage(data, 200, 200, "type", (topleft, topleft))
-    objects.append(image)
-    drawATIImage(image)
+    set_image(originalImage, data, 200, 200, "type", (topleft, topleft), False)
+    drawATIImage(originalImage)
 
 
 def newWhiteSquare():
@@ -360,22 +406,15 @@ def newWhiteSquare():
             else:
                 row.append((0, 0, 0))
         data.append(row)
-    editableImage.data = data
-    editableImage.width = 200
-    editableImage.height = 200
-    editableImage.type = "type"
-    editableImage.topleft = (topleft, topleft)
-    drawATIImage(editableImage)
-    """image = ATIImage(data, 200, 200, "type", (topleft, topleft))
-    objects.append(image)
-    drawATIImage(image)"""
+    set_image(originalImage, data, 200, 200, "type", (topleft, topleft), False)
+    drawATIImage(originalImage)
 
 
 def checkOnImage(x, y):
-    if len(objects) > 0:
-        for obj in objects:
-            if 50 <= x <= obj.width + 50 and 50 <= y <= obj.height + 50:
-                return obj
+    if len(images) > 0:
+        for img in images:
+            if 50 <= x <= img.width + 50 and 50 <= y <= img.height + 50:
+                return img
 
 
 def drawSelection2(x, y, x2, y2, color):
@@ -393,6 +432,8 @@ def drawSelection2(x, y, x2, y2, color):
 
 def makeselection(selection):
     drawSelection2(selection.x, selection.y, selection.prevx, selection.prevy, (255, 255, 255))
+    for img in images:
+        drawATIImage(img)
     drawSelection2(selection.x, selection.y, selection.newx, selection.newy, (0, 0, 255))
 
     #rect = (x, y, x2-x, y2-y)
@@ -419,14 +460,12 @@ def getInput():
             if event.button == 1:
                 startx, starty = pygame.mouse.get_pos()
                 if isSelectionActive:
-                    drawSelection2(newselection.x, newselection.y, newselection.newx, newselection.newy, newselection.color)
+                    drawSelection2(newselection.x, newselection.y, newselection.newx, newselection.newy, (255, 255, 255))
                 newselection.set_startpos((startx, starty))
-                print("mousedown")
                 isSelectionActive = True
                 handleMouseinput()
                 dragging = True
         elif event.type == MOUSEBUTTONUP:
-            print("mouseup")
             if event.button == 1:
                 dragging = False
 
@@ -460,7 +499,7 @@ root = Tk()
 pygame.init()
 ScreenSize = (700, 400)
 surface = pygame.display.set_mode(ScreenSize)
-objects = []
+images = [] #list of images, in case we need to be more flexible than just one editable and one original image, possible to add more.
 app = Window(root)
 Done = False
 
@@ -470,7 +509,10 @@ starty = None
 newselection = Selection()
 isSelectionActive = False
 
-editableImage = ATIImage()
+editableImage = ATIImage(editable=True)
 originalImage = ATIImage()
+
+images.append(editableImage)
+images.append(originalImage)
 
 if __name__ == '__main__': main()

@@ -1,12 +1,14 @@
 import math
 
 class ATIImage(object):
-    def __init__(self, data=None, width=0, height=0, type=0, topleft=None):
+    def __init__(self, data=None, width=0, height=0, type=0, topleft=None, editable=False, values_set=False):
         self.data = data
         self.width = width
         self.height = height
         self.type = type
         self.topleft = topleft
+        self.editable = editable #use these sort of attributes to separate different images from eachother when iterating through "images" list
+        self.values_set = values_set
 
     """def draw(self):
         for x in range(self.height):
@@ -43,8 +45,18 @@ class ATIImage(object):
     def get_at(self, pos):
         return self.data[pos[1]][pos[0]]
 
+    def get_at_screenpos(self, x, y):
+        # get colorvalue based on a screen position
+        return self.data[y - self.topleft[1]][x - self.topleft[0]]
+
     def set_at(self, pos, color):
         self.data[pos[1]][pos[0]] = color
+
+    def collidepoint(self, x, y)
+        # check if arguments x and why "collides" on image
+        if self.values_set:
+            if self.topleft[1] < x < self.topleft[1] + self.width and self.topleft[0] < y < self.topleft[0] + self.height:
+                return True
 
 def rgbcolor2hsvcolor(rgbdata):
     r = rgbdata[0]
