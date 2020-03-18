@@ -152,6 +152,7 @@ def set_image(image, data, width, height, type, topleft, editable):
 
 
 def imgdata_inselection(img):
+    #function returning the colordata of in-image within current selection.
     data = []
     yiterator = 0
     for i in range(abs(newselection.newy - newselection.y)):
@@ -178,6 +179,7 @@ def imgdata_inselection(img):
 
 
 def copySelection():
+    #function copying and drawing a copy of selected part of original image.
     for img in images:
         if img.values_set:
             if not img.editable:
