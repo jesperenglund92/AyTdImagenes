@@ -55,7 +55,8 @@ class ATIImage(object):
     def collidepoint(self, x, y):
         # check if arguments x and why "collides" on image
         if self.values_set:
-            if self.topleft[1] < x < self.topleft[1] + self.width and self.topleft[0] < y < self.topleft[0] + self.height:
+            if self.topleft[0] < x < self.topleft[0] + self.width and \
+                    self.topleft[1] < y < self.topleft[1] + self.height:
                 return True
 
 def rgbcolor2hsvcolor(rgbdata):
