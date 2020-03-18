@@ -21,6 +21,7 @@ class Selection:
         self.newx = self.x
         self.newy = self.y
 
+
     def set_newpos(self, newpos):
         self.prevx = self.newx
         self.prevy = self.newy
@@ -41,3 +42,16 @@ class Selection:
 
     def set_image(self, id):
         self.image = id
+
+    def get_width(self):
+        tl = self.get_top_left()
+        br = self.get_botton_right()
+        return br[0] - tl[0] + 1
+
+    def get_height(self):
+        tl = self.get_top_left()
+        br = self.get_botton_right()
+        return br[1] - tl[1] + 1
+
+    def get_pixel_count(self):
+        return self.get_width() + " x " + self.get_height()

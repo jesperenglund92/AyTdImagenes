@@ -68,6 +68,29 @@ class Window(Frame):
                                                              self.valueEntry.get()))
         self.changebtn.grid(row=2, column=2)
 
+
+
+        Label(master, text="Region seleccionada: ").grid(row=4, column=0)
+        Label(master, text="Grey Average: ").grid(row=5, column=0)
+        Label(master, text="Red Average: ").grid(row=6, column=0)
+        Label(master, text="Green Average ").grid(row=7, column= 0)
+        Label(master, text="Blue Average ").grid(row=8, column= 0)
+
+        self.selection_pixel_count = Label(master, text="0")
+        self.selection_pixel_count.grid(row=4, column=2)
+        self.grey_pixel_average = Label(master, text="0")
+        self.grey_pixel_average.grid(row=5, column=2)
+
+        self.red_pixel_average = Label(master, text="0")
+        self.red_pixel_average.grid(row=6, column=2)
+
+        self.green_pixel_average = Label(master, text="0")
+        self.green_pixel_average.grid(row=7, column=2)
+
+        self.blue_pixel_average = Label(master, text="0")
+        self.blue_pixel_average.grid(row=8, column=2)
+
+
     def exitProgram(self):
         exit()
 
@@ -465,7 +488,7 @@ def drawPreImageSelection(selection):
         surface.set_at((right, top + y), image.get_at_display((right, top + y)))
 
 
-def zdrawImageSelection(selection):
+def drawImageSelection(selection):
     tl = selection.get_top_left()
     br = selection.get_botton_right()
 
@@ -537,17 +560,25 @@ def getInput():
             return True
         elif event.type == MOUSEBUTTONDOWN:
             if event.button == 1:
-                # Hay que revisar que el click sea sobre una de las imagenes
+
                 print("mousedown")
+
                 mouse_positon = pygame.mouse.get_pos()
-                newselection.set_image(is_click_in_images(mouse_positon)) #
-                if editableImage.active and newselection.image != -1: # and is_click_in_images(startx, starty):
+                image_click = is_click_in_images(mouse_positon)
+
+                if editableImage.active and image_click != -1: # and is_click_in_images(startx, starty):
                     if isSelectionActive:
                         drawImageSelection(newselection)
+
                     newselection.set_startpos(mouse_positon)
-                    isSelectionActive = True
-                    handleMouseinput()
+                    newselection.set_image(image_click)
+
                     dragging = True
+                    isSelectionActive = True
+
+                    handleMouseinput()
+
+
                 lastaction = "mousedown"
         elif event.type == MOUSEBUTTONUP:
             print("mouseup")
@@ -563,7 +594,6 @@ def getInput():
                     makeselection(newselection)
                 else:
                     pass
-
             lastaction="mousemotion"
         sys.stdout.flush()  # get stuff to the console
     return False
