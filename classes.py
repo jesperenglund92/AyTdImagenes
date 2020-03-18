@@ -11,8 +11,9 @@ class square:
 
 
 class Selection:
-    def __init__(self, color=(255,255,255)):
-        self.color = color
+    def __init__(self, data=None):
+        self.data = data
+        self.color = (0, 0, 255)
 
     def set_startpos(self, startpos):
         self.x = startpos[0]
