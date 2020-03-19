@@ -2,7 +2,7 @@ import math
 
 
 class ATIImage(object):
-    def __init__(self, data=None, width=0, height=0, type=0, topleft=None, active=False):
+    def __init__(self, data=None, width=0, height=0, type=0, topleft=None, active=False, editable=False, values_set = False):
         if data is None:
             data = []
         self.data = data
