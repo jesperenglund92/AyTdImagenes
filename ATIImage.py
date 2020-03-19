@@ -10,6 +10,8 @@ class ATIImage(object):
         self.height = height
         self.type = type
         self.topleft = topleft
+        self.editable = editable #use these sort of attributes to separate different images from eachother when iterating through "images" list
+        self.values_set = values_set
         self.active = active
 
     def image_color_type(self):
@@ -105,6 +107,10 @@ class ATIImage(object):
 
     def get_blue_average_display(self, tl, br):
         return self.__get_band_average_display(tl, br, 2)
+
+    def get_at_screenpos(self, x, y):
+        # get colorvalue based on a screen position
+        return self.data[y - self.topleft[1]][x - self.topleft[0]]
 
     def set_at(self, pos, color):
         self.data[pos[1]][pos[0]] = color
@@ -258,6 +264,7 @@ class ATIImage(object):
 
     def equalize_image(self):
         raise Exception("Not Implementd method")
+
 
     def color_array(self):
         array = [None] * 256

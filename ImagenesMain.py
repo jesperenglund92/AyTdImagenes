@@ -28,16 +28,19 @@ class Window(Frame):
         menu = Menu(self.master)
         self.master.config(menu=menu)
 
-        file_menu = Menu(menu)
+        self.screenX = 0
+        self.screenY = 0
 
-        new_submenu = Menu(file_menu)
-        new_submenu.add_command(label="circle", command=newWhiteCircle)
-        new_submenu.add_command(label="Square", command=newWhiteSquare)
+        fileMenu = Menu(menu)
 
         file_menu.add_cascade(label="New File", menu=new_submenu)
         file_menu.add_command(label="Load Image", command=self.openFile)
         file_menu.add_command(label="Save File", command=self.saveFile, state="disabled")
         file_menu.add_command(label="Exit", command=self.exitProgram)
+        fileSubmenu.add_command(label="circle", command=newWhiteCircle)
+        fileSubmenu.add_command(label="Square", command=newWhiteSquare)
+        fileSubmenu = Menu(fileMenu)
+
 
         menu.add_cascade(label="File", menu=file_menu)
         edit_menu = Menu(menu)
@@ -51,8 +54,11 @@ class Window(Frame):
         view_menu = Menu(menu)
         view_menu.add_command(label="HSV Color")
         view_menu.add_command(label="Histogram", command=self.histogram_window)
+        menu.add_cascade(label="View", menu = view_menu)
+        editMenu.add_command(label="Copy selection", command=copySelection)
         menu.add_cascade(label="View", menu=view_menu)
 
+        menu.add_cascade(label="Edit", menu=editMenu)
         Label(master, text="x: ").grid(row=0, column=0)
         Label(master, text="y: ").grid(row=1, column=0)
         Label(master, text="color: ").grid(row=2, column=0)
@@ -65,8 +71,15 @@ class Window(Frame):
         self.valueEntry.grid(row=2, column=1)
         self.changebtn = Button(master, text="Change",
                                 command=lambda: changepixval(self.xLabel['text'], self.yLabel['text'],
+                                                             self.screenX, self.screenY,
                                                              self.valueEntry.get()))
         self.changebtn.grid(row=2, column=2)
+        Label(master, text="Pixel amount: ").grid(row=3, column=0)
+        self.pixel_amount = Label(master, text="0")
+        self.pixel_amount.grid(row=3, column=1)
+        Label(master, text="Grayscale average: ").grid(row=4, column=0)
+        self.gray_avg = Label(master, text="0")
+        self.gray_avg.grid(row=4, column=1)
 
 
 
@@ -96,11 +109,72 @@ class Window(Frame):
         pygame.quit()
         exit()
 
-    def setValueEntry(self, x, y, value):
+    def display_pixelval(self, x, y, value, screenx, screeny):
         self.xLabel['text'] = x
         self.yLabel['text'] = y
         self.valueEntry.delete(0, END)
         self.valueEntry.insert(0, value)
+        self.screenX = screenx
+        self.screenY = screeny
+
+    def display_gray_pixamount(self, amount, grayavg):
+        self.pixel_amount['text'] = amount
+        self.gray_avg['text'] = grayavg
+
+
+class RawWindow:
+    def __init__(self, file):
+
+        self.window = Tk()
+        self.window.focus_set()
+
+        self.file = file
+        fuente = font.Font(weight="bold")
+
+        self.lblSelection = Label(self.window, text="Select Raw Size", font=fuente).grid(row=4)
+        self.lblInitial = Label(self.window, text="Width").grid(row=5)
+        self.lblFinal = Label(self.window, text="Height").grid(row=6)
+
+        self.width = StringVar()
+        self.height = StringVar()
+
+        self.txtWidth = Entry(self.window, textvariable=self.width)
+        self.txtHeight = Entry(self.window, textvariable=self.height)
+        self.txtWidth.grid(row=5, column=1)
+        self.txtHeight.grid(row=6, column=1)
+
+        self.button = Button(self.window, text="Open raw", command=self.openRawImage)
+        self.button.grid(row=8)
+
+    def openRawImage(self):
+        print("Width: " + self.txtWidth.get() + " ; Height: " + self.txtHeight.get())
+
+        width = int(self.txtWidth.get())
+        height = int(self.txtHeight.get())
+
+        file = open(self.file.name, "rb")
+        image = []
+        surface = pygame.display.set_mode((width, height))
+
+                for y in range(height):
+                    tmpList = []
+                    for x in range(width):
+                        color = int.from_bytes(file.read(1), byteorder="big")
+
+                        surface.set_at((x, y), (color, color, color))
+                        tmpList.append([color, color, color])
+                    image.append(tmpList)
+                self.window.destroy()
+
+                editableImage.height = height
+                editableImage.width = width
+                editableImage.data = image
+
+                originalImage.height = height
+                originalImage.width = width
+                originalImage.data = image
+                printImages()
+                file.close()
 
     def copy_window(self):
         window = self.__CopyWindow()
@@ -182,6 +256,82 @@ class Window(Frame):
                                 int.from_bytes(file.read(1), byteorder="big")
                                 ])
             image.append(tmpList)
+
+def set_image(image, data, width, height, type, topleft, editable):
+    image.data = data
+    image.width = width
+    image.height = height
+    image.type = type
+    image.topleft = topleft
+    image.editable = editable
+    image.values_set = True
+
+
+def imgdata_inselection(img):
+    #function returning the colordata of in-image within current selection.
+    data = []
+    yiterator = 0
+    for i in range(abs(newselection.newy - newselection.y)):
+        row = []
+        if newselection.newy < newselection.y:
+            y = newselection.newy
+        else:
+            y = newselection.y
+        xiterator = 0
+        for j in range(abs(newselection.newx - newselection.x)):
+            if newselection.newx < newselection.x:
+                x = newselection.newx
+            else:
+                x = newselection.x
+            if img.collidepoint(x + j, y + i):
+                row.append(img.get_at_screenpos(j + x, y + i))
+                xiterator += 1
+
+        if xiterator > 0:
+            yiterator += 1
+        if len(row) > 0:
+            data.append(row)
+    return data
+
+
+def copySelection():
+    #function copying and drawing a copy of selected part of original image.
+    for img in images:
+        if img.values_set:
+            if not img.editable:
+                data = imgdata_inselection(img)
+                image = ATIImage(data, len(data[0]), len(data), "type", (300, 50), True, True)
+                images.append(image)
+                drawATIImage(image)
+
+
+def loadPpm(file):
+    count = 0
+    while count < 3:
+        line = file.readline()
+        if line[0] == '#':  # Ignore comments
+            continue
+        count = count + 1
+        if count == 1:  # Magic num info
+            magicNum = line.strip()
+            if magicNum != 'P2' or magicNum != 'P5':
+                print('Not a valid PPM file')
+        elif count == 2:  # Width and Height
+            [width, height] = (line.strip()).split()
+            width = int(width)
+            height = int(height)
+        elif count == 3:  # Max gray level
+            maxVal = int(line.strip())
+    image = []
+    # surface = pygame.display.set_mode((width, height))
+    for y in range(height):
+        tmpList = []
+        for x in range(width):
+            tmpList.append([int.from_bytes(file.read(1), byteorder="big"),
+                            int.from_bytes(file.read(1), byteorder="big"),
+                            int.from_bytes(file.read(1), byteorder="big")
+                            ])
+        image.append(tmpList)
 
         editableImage.data = image
         editableImage.width = width
@@ -411,7 +561,7 @@ def quit_callback():
     Done = True
 
 
-def changepixval(x, y, color):
+def changepixval(x, y, screenx, screeny, color):
     colorlist = color.split()
     r, g, b = int(colorlist[0]), int(colorlist[1]), int(colorlist[2])
 
@@ -439,9 +589,8 @@ def newWhiteCircle():
             else:
                 row.append((0, 0, 0))
         data.append(row)
-    image = ATIImage(data, 200, 200, "type", (topleft, topleft))
-    objects.append(image)
-    drawATIImage(image)
+    set_image(originalImage, data, 200, 200, "type", (topleft, topleft), False)
+    drawATIImage(originalImage)
 
 
 def newWhiteSquare():
@@ -458,9 +607,8 @@ def newWhiteSquare():
             else:
                 row.append((0, 0, 0))
         data.append(row)
-    image = ATIImage(data, 200, 200, "type", (topleft, topleft))
-    objects.append(image)
-    drawATIImage(image)
+    set_image(originalImage, data, 200, 200, "type", (topleft, topleft), False)
+    drawATIImage(originalImage)
 
 
 def drawSelection(x, y, x2, y2, color):
@@ -468,7 +616,6 @@ def drawSelection(x, y, x2, y2, color):
     left = min(x, x2)
     right = max(x, x2)
     bottom = max(y, y2)
-
     surface = pygame.display.get_surface()
     for x in range(right - left):
         surface.set_at((x + left, top), color)
@@ -528,6 +675,25 @@ def is_click_in_images(pos):
     if originalImage.in_display_image(pos):
         return 1
     return -1
+
+
+def rgbtograyscale(pixelcol):
+    return pixelcol[0] * 0.3 + pixelcol[1] * 0.59 + pixelcol[2] * 0.11
+
+
+def get_gray_pixamount(img):
+    if img.values_set:
+        data = imgdata_inselection(img)
+        if len(data) > 0:
+            width = len(data[0])
+            height = len(data)
+            pixelamount = width * height
+            sum = 0
+            for row in data:
+                for col in row:
+                    sum += rgbtograyscale(col)
+            avggray = round(sum/pixelamount, 2)
+            app.display_gray_pixamount(pixelamount, avggray)
 
 
 def makeselection(selection):
@@ -608,7 +774,6 @@ def getInput():
 
                 lastaction = "mousedown"
         elif event.type == MOUSEBUTTONUP:
-            print("mouseup")
             if event.button == 1:
                 if lastaction != "mousemotion":
                     isSelectionActive = False
@@ -650,7 +815,7 @@ root = Tk()
 pygame.init()
 ScreenSize = (1, 1)
 surface = pygame.display.set_mode(ScreenSize)
-objects = []
+images = [] #list of images, in case we need to be more flexible than just one editable and one original image, possible to add more.
 app = Window(root)
 Done = False
 
@@ -661,7 +826,10 @@ newselection = Selection()
 isSelectionActive = False
 lastaction = None
 
-editableImage = ATIImage()
+editableImage = ATIImage(editable=True)
 originalImage = ATIImage()
+
+images.append(editableImage)
+images.append(originalImage)
 
 if __name__ == '__main__': main()
