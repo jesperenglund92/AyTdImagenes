@@ -166,6 +166,8 @@ class Window(Frame):
 
     def make_negative(self):
         editableImage.negative()
+        drawATIImage(editableImage)
+        return
 
     def histogram_window(self):
         window = self.__HistogramWindow()
