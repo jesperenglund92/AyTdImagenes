@@ -48,6 +48,21 @@ class ATIImage(object):
     def set_at(self, pos, color):
         self.data[pos[1]][pos[0]] = color
 
+    def collidepoint(self, x, y):
+        # check if arguments x and why "collides" on image
+        if self.values_set:
+            if self.topleft[1] < x < self.topleft[1] + self.width and self.topleft[0] < y < self.topleft[0] + self.height:
+                return True
+
+    def get_data(self):
+        pass
+
+    def get_size(self):
+        pass
+
+    def get_type(self):
+        pass
+
     # Add Images
     def add_image(self, image):
         if self.width != image.width or self.height != image.height:

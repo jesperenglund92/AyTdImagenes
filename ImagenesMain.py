@@ -1,18 +1,10 @@
-import math
-
 from tkinter import filedialog, font
-from tkinter import *
 import pygame
-import sys
 from pygame.locals import *
 from ATIImage import *
 from classes import *
-import struct
-import binascii
-import array
 
-
-class PPM_Exception(Exception):
+class PPMException(Exception):
     def __init__(self, value):
         self.value = value
 
@@ -31,16 +23,16 @@ class Window(Frame):
         self.screenX = 0
         self.screenY = 0
 
-        fileMenu = Menu(menu)
+        file_menu = Menu(menu)
 
-        fileSubmenu = Menu(fileMenu)
+        fileSubmenu = Menu(file_menu)
         fileSubmenu.add_command(label="circle", command=newWhiteCircle)
         fileSubmenu.add_command(label="Square", command=newWhiteSquare)
 
-        fileMenu.add_cascade(label="New File", menu=fileSubmenu)
-        fileMenu.add_command(label="Load Image", command=openFile)
-        fileMenu.add_command(label="Save File", command=saveFile)
-        fileMenu.add_command(label="Exit", command=self.exitProgram)
+        file_menu.add_cascade(label="New File", menu=fileSubmenu)
+        file_menu.add_command(label="Load Image", command=openFile)
+        file_menu.add_command(label="Save File", command=saveFile)
+        file_menu.add_command(label="Exit", command=self.exitProgram)
 
 
         menu.add_cascade(label="File", menu=file_menu)
@@ -56,9 +48,9 @@ class Window(Frame):
         view_menu.add_command(label="HSV Color")
         view_menu.add_command(label="Histogram", command=self.histogram_window)
         menu.add_cascade(label="View", menu = view_menu)
-        editMenu.add_command(label="Copy selection", command=copySelection)
+        edit_menu.add_command(label="Copy selection", command=copy_selection)
 
-        menu.add_cascade(label="Edit", menu=editMenu)
+
         Label(master, text="x: ").grid(row=0, column=0)
         Label(master, text="y: ").grid(row=1, column=0)
         Label(master, text="color: ").grid(row=2, column=0)
@@ -96,6 +88,24 @@ class Window(Frame):
         self.pixel_amount['text'] = amount
         self.gray_avg['text'] = grayavg
 
+    def copy_window(self):
+        pass
+
+    def operations_window(self):
+        pass
+
+    def threshold_window(self):
+        pass
+
+    def equalization_window(self):
+        pass
+
+    def make_negative(self):
+        pass
+
+    def histogram_window(self):
+        pass
+
 
 class RawWindow:
     def __init__(self, file):
@@ -131,25 +141,24 @@ class RawWindow:
         image = []
         surface = pygame.display.set_mode((width, height))
 
-                for y in range(height):
-                    tmpList = []
-                    for x in range(width):
-                        color = int.from_bytes(file.read(1), byteorder="big")
+        for y in range(height):
+            tmpList = []
+            for x in range(width):
+                color = int.from_bytes(file.read(1), byteorder="big")
 
-                        surface.set_at((x, y), (color, color, color))
-                        tmpList.append([color, color, color])
-                    image.append(tmpList)
-                self.window.destroy()
+                surface.set_at((x, y), (color, color, color))
+                tmpList.append([color, color, color])
+            image.append(tmpList)
+        self.window.destroy()
 
-                editableImage.height = height
-                editableImage.width = width
-                editableImage.data = image
+        editableImage.height = height
+        editableImage.width = width
+        editableImage.data = image
 
-                originalImage.height = height
-                originalImage.width = width
-                originalImage.data = image
-                printImages()
-                file.close()
+        originalImage.height = height
+        originalImage.width = width
+        originalImage.data = image
+        file.close()
 
     def copy_window(self):
         window = self.__CopyWindow()
@@ -174,7 +183,7 @@ class RawWindow:
     def threshold_window(self):
         window = self._Threshold_window()
 
-    class _ThresholdWindow():
+    class _Threshold_window():
         def __init__(self):
             self.window = Tk()
             self.window.focus_set()
@@ -240,7 +249,7 @@ def imgdata_inselection(img):
     return data
 
 
-def copySelection():
+def copy_selection():
     #function copying and drawing a copy of selected part of original image.
     for img in images:
         if img.values_set:
@@ -253,6 +262,8 @@ def copySelection():
 
 def loadPpm(file):
     count = 0
+    height = 0
+    width = 0
     while count < 3:
         line = file.readline()
         if line[0] == '#':  # Ignore comments
@@ -304,6 +315,8 @@ def savePpm(file):
 
 def loadPgm(file):
     count = 0
+    height = 0
+    width = 0
     while count < 3:
         line = file.readline()
         if line[0] == '#':  # Ignore comments
@@ -526,12 +539,12 @@ def get_gray_pixamount(img):
 
 
 def makeselection(selection):
-    drawSelection2(selection.x, selection.y, selection.prevx, selection.prevy, (255, 255, 255))
+    drawSelection(selection.x, selection.y, selection.prevx, selection.prevy, (255, 255, 255))
     for img in images:
         drawATIImage(img)
         if img.collidepoint(selection.newx, selection.newy):
             get_gray_pixamount(img)
-    drawSelection2(selection.x, selection.y, selection.newx, selection.newy, (0, 0, 255))
+    drawSelection(selection.x, selection.y, selection.newx, selection.newy, (0, 0, 255))
 
     # rect = (x, y, x2-x, y2-y)
     # pygame.draw.rect(surface, (0,0,255), (x, y, x2-x, y2-y))
@@ -559,7 +572,7 @@ def getInput():
             if event.button == 1:
                 startx, starty = pygame.mouse.get_pos()
                 if isSelectionActive:
-                    drawSelection2(newselection.x, newselection.y, newselection.newx, newselection.newy, (255, 255, 255))
+                    drawSelection(newselection.x, newselection.y, newselection.newx, newselection.newy, (255, 255, 255))
                 newselection.set_startpos((startx, starty))
                 isSelectionActive = True
                 handleMouseinput()
@@ -578,7 +591,6 @@ def getInput():
 
 
 def main():
-    # initialise pygame
 
     root.wm_title("Tkinter window")
     root.protocol("WM_DELETE_WINDOW", quit_callback)
@@ -597,7 +609,7 @@ def main():
 
 root = Tk()
 pygame.init()
-ScreenSize = (1, 1)
+ScreenSize = (800, 400)
 surface = pygame.display.set_mode(ScreenSize)
 images = [] #list of images, in case we need to be more flexible than just one editable and one original image, possible to add more.
 app = Window(root)
