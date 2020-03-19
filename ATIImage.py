@@ -2,7 +2,9 @@ import math
 
 
 class ATIImage(object):
-    def __init__(self, data=None, width=0, height=0, type=0, topleft=None, editable=False, values_set=False):
+    def __init__(self, data=None, width=0, height=0, type=0, topleft=None, active=False, editable=False, values_set = False):
+        if data is None:
+            data = []
         self.data = data
         self.width = width
         self.height = height
@@ -10,6 +12,25 @@ class ATIImage(object):
         self.topleft = topleft
         self.editable = editable #use these sort of attributes to separate different images from eachother when iterating through "images" list
         self.values_set = values_set
+        self.active = active
+
+    def image_color_type(self):
+        if self.type == '.raw' or self.type == '.pgm':
+            return 'g'
+        return 'rgb'
+
+    def get_top_left(self):
+        return self.topleft
+
+    def get_botton_right(self):
+        return [self.topleft[0] + self.width, self.topleft[1] + self.height]
+
+    def in_display_image(self, pos):
+        botton_right = self.get_botton_right()
+        return self.topleft[0] <= pos[0] <= botton_right[0] and self.topleft[1] <= pos[1] <= botton_right[1]
+
+    def set_top_left(self, pos):
+        self.topleft = pos
 
     def get_red_band(self):
         data = []
@@ -40,6 +61,52 @@ class ATIImage(object):
 
     def get_at(self, pos):
         return self.data[pos[1]][pos[0]]
+
+    def get_pos_display(self, pos):
+        return pos[0] - self.topleft[0], pos[1] - self.topleft[1]
+
+    def get_at_display(self, pos):
+        x = pos[0] - self.topleft[0]
+        y = pos[1] - self.topleft[1]
+        if not (0 <= x <= self.width):
+            raise Exception("Invalid position")
+        if not (0 <= y <= self.height):
+            raise Exception("Invalid position")
+        return self.get_at((x - 1, y - 1))
+
+    def set_at_display(self, pos, color):
+        x = pos[0] - self.topleft[0] - 1
+        y = pos[1] - self.topleft[1] - 1
+        if not (0 <= x <= self.width - 1):
+            raise Exception("Invalid position")
+        if not (0 <= y <= self.height - 1):
+            raise Exception("Invalid position")
+        self.set_at((x, y), color)
+
+    def __get_band_average_display(self, tl, br, band):
+        left = tl[0]
+        top = tl[1]
+        right = br[0]
+        botton = br[1]
+        count = 0
+        total = 0
+        for x in range(right - left + 1):
+            for y in range(botton - top + 1):
+                count = count + 1
+                total = total + self.get_at_display((x + left, y + top))[band]
+        return round(total / count, 2)
+
+    def get_grey_average_display(self, tl, br):
+        return self.get_red_average_display(tl, br)
+
+    def get_red_average_display(self, tl, br):
+        return self.__get_band_average_display(tl, br, 0)
+
+    def get_green_average_display(self, tl, br):
+        return self.__get_band_average_display(tl, br, 1)
+
+    def get_blue_average_display(self, tl, br):
+        return self.__get_band_average_display(tl, br, 2)
 
     def get_at_screenpos(self, x, y):
         # get colorvalue based on a screen position
@@ -144,7 +211,6 @@ class ATIImage(object):
         return cls(image, img1.width, img2.height, img1.type, img1.topLeft)
         """
 
-
     # Scalar product
     def scalar_product(self, scalar):
         if not isinstance(scalar, int):
@@ -174,7 +240,6 @@ class ATIImage(object):
             for y in range(self.height):
                 self.set_at((x, y), self.__threshold_assign(self.get_at((x, y)), threshold))
 
-
     # Dynamic compretion
     def dynamic_compression(self):
         # T(r) = c * log( 1 + r )
@@ -193,7 +258,7 @@ class ATIImage(object):
         # c = (L - 1)^(1 - gamma)
 
     # Scalling function
-    def normalize_image (self):
+    def normalize_image(self):
         raise Exception("Not implemented method")
         # X' = a + (X - Xmin) * ( b - a) / (Xmax - Xmin)
 
@@ -208,13 +273,11 @@ class ATIImage(object):
                 array[self.get_at((x, y))] = array[self.get_at((x, y))] + 1
         return array
 
-
     def negative(self):
         for x in range(self.width):
             for y in range(self.height):
                 for z in range(3):
                     self.set_at((x, y), 255 - self.get_at((x, y))[z])
-
 
 
 def rgbcolor2hsvcolor(rgbdata):
