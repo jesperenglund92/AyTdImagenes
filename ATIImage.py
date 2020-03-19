@@ -276,8 +276,8 @@ class ATIImage(object):
     def negative(self):
         for x in range(self.width):
             for y in range(self.height):
-                for z in range(3):
-                    self.set_at((x, y), 255 - self.get_at((x, y))[z])
+                color = self.get_at((x, y))
+                self.set_at((x, y), (255 - color[0], 255 - color[1], 255 - color[2]))
 
 
 def rgbcolor2hsvcolor(rgbdata):
