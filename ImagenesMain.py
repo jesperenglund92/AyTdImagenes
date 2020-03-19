@@ -92,6 +92,8 @@ class Window(Frame):
 
 
     def exitProgram(self):
+        pygame.display.quit()
+        pygame.quit()
         exit()
 
     def setValueEntry(self, x, y, value):
@@ -412,9 +414,16 @@ def quit_callback():
 def changepixval(x, y, color):
     colorlist = color.split()
     r, g, b = int(colorlist[0]), int(colorlist[1]), int(colorlist[2])
-    for obj in objects:
-        obj.data[x][y] = (r, g, b)
-        drawATIImage(obj)
+
+    editableImage.data[y - 1][x - 1] = (r, g, b)
+    editedX = x + editableImage.get_top_left()[0]
+    editedY = y + editableImage.get_top_left()[1]
+    surface = pygame.display.get_surface()
+    surface.set_at((editedX, editedY), (r, g, b))
+
+    #for obj in objects:
+    #    obj.data[x][y] = (r, g, b)
+    #    drawATIImage(obj)
 
 
 def newWhiteCircle():
@@ -515,10 +524,8 @@ def get_image_by_id(id):
 def is_click_in_images(pos):
     # Tengo posiciones de Top Left y botton rigth. Puedo consultar con cualquier imagen
     if editableImage.in_display_image(pos):
-        print("is click in image = 0")
         return 0
     if originalImage.in_display_image(pos):
-        print("is click in image = 1")
         return 1
     return -1
 
@@ -538,11 +545,14 @@ def checkOnImage(x, y):
                 return obj
 
 
-def handleMouseinput():
-    x, y = pygame.mouse.get_pos()
-    imClicked = checkOnImage(x, y)
-    if imClicked:
-        app.setValueEntry(x - 50, y - 50, imClicked.data[x - 50][y - 50])
+def handleMouseinput(mouse_pos, image_click):
+    image = get_image_by_id(image_click)
+    pos_display = image.get_pos_display(mouse_pos)
+    app.setValueEntry(pos_display[0], pos_display[1], image.get_at_display(mouse_pos))
+
+    #imClicked = checkOnImage(x, y)
+    #if imClicked:
+    #    app.setValueEntry(x - 50, y - 50, imClicked.data[x - 50][y - 50])
 
 def updateSelectionValues(selection):
     app.selection_pixel_count["text"] = selection.get_pixel_count()
@@ -593,7 +603,7 @@ def getInput():
                     dragging = True
                     isSelectionActive = True
 
-                    handleMouseinput()
+                    handleMouseinput(mouse_positon, image_click)
 
 
                 lastaction = "mousedown"

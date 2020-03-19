@@ -60,18 +60,21 @@ class ATIImage(object):
     def get_at(self, pos):
         return self.data[pos[1]][pos[0]]
 
+    def get_pos_display(self, pos):
+        return pos[0] - self.topleft[0], pos[1] - self.topleft[1]
+
     def get_at_display(self, pos):
         x = pos[0] - self.topleft[0]
         y = pos[1] - self.topleft[1]
-        if not (0 <= x <= self.width - 1):
+        if not (0 <= x <= self.width):
             raise Exception("Invalid position")
-        if not (0 <= y <= self.height - 1):
+        if not (0 <= y <= self.height):
             raise Exception("Invalid position")
-        return self.get_at((x, y))
+        return self.get_at((x - 1, y - 1))
 
     def set_at_display(self, pos, color):
-        x = pos[0] - self.topleft[0]
-        y = pos[1] - self.topleft[1]
+        x = pos[0] - self.topleft[0] - 1
+        y = pos[1] - self.topleft[1] - 1
         if not (0 <= x <= self.width - 1):
             raise Exception("Invalid position")
         if not (0 <= y <= self.height - 1):
