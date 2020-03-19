@@ -10,6 +10,8 @@ from classes import *
 import struct
 import binascii
 import array
+import matplotlib.pyplot as plt
+import math
 
 
 class PPM_Exception(Exception):
@@ -168,7 +170,42 @@ class Window(Frame):
         editableImage.negative()
 
     def histogram_window(self):
-        window = self.__HistogramWindow()
+        """Following libraries needed:
+        import matplotlib.pyplot as plt
+        import math"""
+        yvals, xvals = self.get_histogram(editableImage.data, 1, 0)  # or get editableimage in a more dynamic way
+        plt.figure(figsize=[10, 8])
+        plt.bar(xvals, yvals, width=5, color='#0504aa', alpha=0.7)
+        # plt.xlim(0, max(xvals))
+        plt.grid(axis='y', alpha=0.75)
+        plt.xlabel('Value', fontsize=10)
+        plt.ylabel('Frequency', fontsize=10)
+        plt.xticks(fontsize=10)
+        plt.yticks(fontsize=10)
+        plt.ylabel('Frequency', fontsize=15)
+        plt.title('Histogram', fontsize=15)
+        plt.show()
+        # window = self.__HistogramWindow()
+
+    def get_histogram(self, imgdata, step, band):
+        xpoints = []
+        ypoints = []
+        steps = int(round(255 / step))
+        xpoint = 0
+        #for i in range(256):
+        #    xpoints.append(i)
+        #ypoints = editableImage.color_array(0)
+        #return ypoints, xpoints
+
+        for i in range(steps + 1):
+            ypoints.append(0)
+            xpoints.append(xpoint)
+            xpoint += step
+        for row in imgdata:
+            for col in row:
+                ypoints[int(math.trunc(col[band] / step))] += 1
+        return ypoints, xpoints
+
 
     class __HistogramWindow():
         def __init__(self):
