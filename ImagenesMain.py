@@ -289,7 +289,9 @@ class Window(Frame):
             count = count + 1
             if count == 1:  # Magic num info
                 magicNum = line.strip()
-                if magicNum != 'P3' or magicNum != 'P6':
+                magic_num_as_bytes = int.from_bytes(magicNum, byteorder="big")
+
+                if not (magicNum == 'P3' or magicNum == 'P6' or magic_num_as_bytes == 20534):
                     print('Not a valid PPM file')
             elif count == 2:  # Width and Height
                 [width, height] = (line.strip()).split()
@@ -467,17 +469,17 @@ class Window(Frame):
 
             if filename.lower().endswith(('.raw')):
                 editableImage.type = '.raw'
-                originalImage.type = '.raw'
+                # originalImage.type = '.raw'
                 self.loadRaw(file)
             if filename.lower().endswith(('.pgm')):
                 editableImage.type = '.pgm'
-                editableImage.type = '.pgm'
+                # editableImage.type = '.pgm'
                 self.loadPgm(file)
                 drawImages()
 
             if filename.lower().endswith(('.ppm')):
                 editableImage.type = '.ppm'
-                editableImage.type = '.ppm'
+                # editableImage.type = '.ppm'
                 self.loadPpm(file)
                 drawImages()
             file.close()
