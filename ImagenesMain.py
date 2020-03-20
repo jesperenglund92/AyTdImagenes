@@ -82,7 +82,6 @@ class Window(Frame):
         self.gray_avg.grid(row=4, column=1)
 
 
-
         Label(master, text="Region seleccionada: ").grid(row=5, column=0)
         Label(master, text="Grey Average: ").grid(row=6, column=0)
         Label(master, text="Red Average: ").grid(row=7, column=0)
