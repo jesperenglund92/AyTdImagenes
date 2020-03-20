@@ -10,6 +10,7 @@ from classes import *
 import struct
 import binascii
 import array
+import copy
 
 
 class PPM_Exception(Exception):
@@ -142,8 +143,89 @@ class Window(Frame):
         def __init__(self):
             self.window = Tk()
             self.window.focus_set()
-            self.window.title("Copy Image")
+            self.window.title("Operations")
+
+            Label(self.window, text="Every operation is over the left image and his original").grid(row=0, column= 0)
+
+
+            Label(self.window, text="Adding Images").grid(row=2, column=0)
+            self.btnAddImage = Button(self.window, text="Add image with original",
+                                      command=self.add_images)
+            self.btnAddImage.grid(row=2, column=1)
+
+            Label(self.window, text="Substract Images").grid(row=3, column=0)
+            self.btnSubstractImage = Button(self.window, text="Editable image substract original",
+                                      command=self.substract_images)
+            self.btnSubstractImage.grid(row=3, column=1)
+
+            Label(self.window, text="Multiply Images").grid(row=4, column=0)
+            self.btnMultiplyImage = Button(self.window, text="Editable image multiply original",
+                                            command=self.multiply_image)
+            self.btnMultiplyImage.grid(row=4, column=1)
+
+            Label(self.window, text="Multiply Image by escalar").grid(row=6, column=0)
+            # Here goes Entry for scalar
+            scalar = StringVar()
+            self.txtScalar = Entry(self.window, textvariable=scalar)
+            self.txtScalar.grid(row=6, column=1)
+
+            self.btnMultiplyImageByScalar = Button(self.window, text="Editable image multiply scalar",
+                                           command=self.multiply_images_scalar)
+            self.btnMultiplyImageByScalar.grid(row=6, column=2)
+
+            Label(self.window, text="Dynamic compression Images").grid(row=8, column=0)
+            self.btnCompressDynamicRange = Button(self.window, text="Compress Image by Dymanic Range",
+                                           command=self.compression_dynamic_range)
+            self.btnCompressDynamicRange.grid(row=8, column=1)
+
+            Label(self.window, text="Gamma correction").grid(row=9, column=0)
+            gamma = StringVar()
+            self.txtGamma = Entry(self.window, textvariable=gamma)
+            self.txtGamma.grid(row=9, column=1)
+            self.btnGammaCorrection = Button(self.window, text="Apply Gamma correction",
+                                                  command=self.gamma_correction)
+            self.btnGammaCorrection.grid(row=9, column=2)
+
+
+
             pass
+
+        def add_images(self):
+            editableImage.add_image(originalImage)
+            drawATIImage(editableImage)
+            drawATIImage(originalImage)
+            return
+
+        def substract_images(self):
+            editableImage.subtract_image(originalImage)
+            drawATIImage(editableImage)
+            return
+
+
+        def multiply_image(self):
+            editableImage.multiply_image(originalImage)
+            drawATIImage(editableImage)
+            return
+
+        def multiply_images_scalar(self):
+            scalar = int(self.txtScalar.get())
+            editableImage.scalar_product(scalar)
+            drawATIImage(editableImage)
+            return
+
+        def compression_dynamic_range(self):
+            editableImage.dynamic_compression()
+            drawATIImage(editableImage)
+            pass
+
+        def gamma_correction(self):
+            gamma = float(self.txtGamma.get())
+            if gamma <= 0 or gamma == 1 or gamma >= 2:
+                raise Exception("Invalid Gamma")
+            editableImage.gamma_function(gamma)
+            pass
+
+
 
     def threshold_window(self):
         window = self._Threshold_window()
@@ -207,7 +289,9 @@ class Window(Frame):
             count = count + 1
             if count == 1:  # Magic num info
                 magicNum = line.strip()
-                if magicNum != 'P3' or magicNum != 'P6':
+                magic_num_as_bytes = int.from_bytes(magicNum, byteorder="big")
+
+                if not (magicNum == 'P3' or magicNum == 'P6' or magic_num_as_bytes == 20534):
                     print('Not a valid PPM file')
             elif count == 2:  # Width and Height
                 [width, height] = (line.strip()).split()
@@ -230,9 +314,11 @@ class Window(Frame):
         editableImage.width = width
         editableImage.height = height
 
-        originalImage.data = image
-        originalImage.width = width
-        originalImage.height = height
+        originalImage = editableImage.get_copy()
+
+        #originalImage.data = image
+        #originalImage.width = width
+        #originalImage.height = height
 
     def savePpm(self, file):
         image = editableImage.get_data()
@@ -278,9 +364,12 @@ class Window(Frame):
         editableImage.width = width
         editableImage.height = height
 
-        originalImage.data = image
-        originalImage.width = width
-        originalImage.height = height
+        originalImage = editableImage.get_copy()
+        
+
+        #originalImage.data = image
+        #originalImage.width = width
+        #originalImage.height = height
 
     def savePgm(self, file):
         image = editableImage.get_data()
@@ -342,9 +431,10 @@ class Window(Frame):
             editableImage.width = width
             editableImage.data = image
 
-            originalImage.height = height
-            originalImage.width = width
-            originalImage.data = image
+            originalImage = editableImage.get_copy()
+            #originalImage.height = height
+            #originalImage.width = width
+            #originalImage.data = image
             drawImages()
             file.close()
 
@@ -379,17 +469,17 @@ class Window(Frame):
 
             if filename.lower().endswith(('.raw')):
                 editableImage.type = '.raw'
-                originalImage.type = '.raw'
+                # originalImage.type = '.raw'
                 self.loadRaw(file)
             if filename.lower().endswith(('.pgm')):
                 editableImage.type = '.pgm'
-                editableImage.type = '.pgm'
+                # editableImage.type = '.pgm'
                 self.loadPgm(file)
                 drawImages()
 
             if filename.lower().endswith(('.ppm')):
                 editableImage.type = '.ppm'
-                editableImage.type = '.ppm'
+                # editableImage.type = '.ppm'
                 self.loadPpm(file)
                 drawImages()
             file.close()
@@ -761,7 +851,7 @@ isSelectionActive = False
 lastaction = None
 
 editableImage = ATIImage(editable=True)
-originalImage = ATIImage()
+originalImage = None
 
 images.append(editableImage)
 images.append(originalImage)
