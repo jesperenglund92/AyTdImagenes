@@ -226,11 +226,15 @@ class ATIImage(object):
 
     # Threshold Function
     def __threshold_assign(self, array, threshold):
-        for x in range(3):
-            if array[x] <= threshold:
-                array[x] = 0
-            else:
-                array[x] = 255
+        #for x in range(3):
+        if array[0] <= threshold:
+            array[0] = 0
+            array[1] = 0
+            array[2] = 0
+        else:
+            array[0] = 255
+            array[1] = 255
+            array[2] = 255
         return array
 
     def threshold_function(self, threshold):

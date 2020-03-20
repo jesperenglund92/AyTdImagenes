@@ -138,7 +138,7 @@ class Window(Frame):
     def operations_window(self):
         window = self.__OperationsWindow()
 
-    class __OperationsWindow():
+    class __OperationsWindow:
         def __init__(self):
             self.window = Tk()
             self.window.focus_set()
@@ -148,12 +148,30 @@ class Window(Frame):
     def threshold_window(self):
         window = self._Threshold_window()
 
-    class _ThresholdWindow():
+    class _Threshold_window:
         def __init__(self):
             self.window = Tk()
             self.window.focus_set()
             self.window.title("Threshold Image")
-            pass
+            Label(self.window, text="Threshold: ").grid(row=0, column=0)
+
+            self.threshold = StringVar()
+
+            self.txtThreshold = Entry(self.window, textvariable=self.threshold)
+            self.txtThreshold.grid(row=0, column=1)
+            self.changebtn = Button(self.window, text="Change",
+                                    command=self.apply_threshold_function)
+            self.changebtn.grid(row=0, column=2)
+
+        def apply_threshold_function(self):
+
+            threshold = int(self.txtThreshold.get())
+            # threshold = int(threshold)
+            if threshold < 0 or threshold > 255:
+                raise Exception("Only numbers between 0 and 255")
+
+            editableImage.threshold_function(threshold)
+            drawATIImage(editableImage)
 
     def equalization_window(self):
         window = self.__EqualizationWindow()
