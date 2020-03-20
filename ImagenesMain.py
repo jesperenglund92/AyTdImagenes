@@ -10,6 +10,7 @@ from classes import *
 import struct
 import binascii
 import array
+import copy
 
 
 class PPM_Exception(Exception):
@@ -192,6 +193,7 @@ class Window(Frame):
         def add_images(self):
             editableImage.add_image(originalImage)
             drawATIImage(editableImage)
+            drawATIImage(originalImage)
             return
 
         def substract_images(self):
@@ -310,9 +312,10 @@ class Window(Frame):
         editableImage.width = width
         editableImage.height = height
 
-        originalImage.data = image
-        originalImage.width = width
-        originalImage.height = height
+        originalImage = copy.copy(editableImage)
+        #originalImage.data = image
+        #originalImage.width = width
+        #originalImage.height = height
 
     def savePpm(self, file):
         image = editableImage.get_data()
@@ -358,9 +361,12 @@ class Window(Frame):
         editableImage.width = width
         editableImage.height = height
 
-        originalImage.data = image
-        originalImage.width = width
-        originalImage.height = height
+        originalImage = copy.copy(editableImage)
+        
+
+        #originalImage.data = image
+        #originalImage.width = width
+        #originalImage.height = height
 
     def savePgm(self, file):
         image = editableImage.get_data()
@@ -422,9 +428,10 @@ class Window(Frame):
             editableImage.width = width
             editableImage.data = image
 
-            originalImage.height = height
-            originalImage.width = width
-            originalImage.data = image
+            originalImage = copy.copy(editableImage)
+            #originalImage.height = height
+            #originalImage.width = width
+            #originalImage.data = image
             drawImages()
             file.close()
 
