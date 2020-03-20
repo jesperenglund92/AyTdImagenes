@@ -312,7 +312,8 @@ class Window(Frame):
         editableImage.width = width
         editableImage.height = height
 
-        originalImage = copy.copy(editableImage)
+        originalImage = editableImage.get_copy()
+
         #originalImage.data = image
         #originalImage.width = width
         #originalImage.height = height
@@ -361,7 +362,7 @@ class Window(Frame):
         editableImage.width = width
         editableImage.height = height
 
-        originalImage = copy.copy(editableImage)
+        originalImage = editableImage.get_copy()
         
 
         #originalImage.data = image
@@ -428,7 +429,7 @@ class Window(Frame):
             editableImage.width = width
             editableImage.data = image
 
-            originalImage = copy.copy(editableImage)
+            originalImage = editableImage.get_copy()
             #originalImage.height = height
             #originalImage.width = width
             #originalImage.data = image
@@ -848,7 +849,7 @@ isSelectionActive = False
 lastaction = None
 
 editableImage = ATIImage(editable=True)
-originalImage = ATIImage()
+originalImage = None
 
 images.append(editableImage)
 images.append(originalImage)
