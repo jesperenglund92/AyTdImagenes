@@ -395,7 +395,7 @@ class ATIImage(object):
         array = [None] * 256
         for x in range(self.width):
             for y in range(self.height):
-                array[self.get_at((x, y))] = array[self.get_at((x, y))] + 1
+                array[self.get_at((x, y))[band]] = array[self.get_at((x, y))[band]] + 1
         return array
 
     def negative(self):
