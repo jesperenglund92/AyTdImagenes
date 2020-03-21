@@ -1,88 +1,282 @@
+from pygame.locals import *
+from ATIImage import *
+from classes import *
 import pygame
+import matplotlib.pyplot as plt
+import math
+import numpy as np
 
-# --- constants --- (UPPER_CASE names)
+class Window(Frame):
+    def __init__(self, master=None):
+        Frame.__init__(self, master)
+        self.master = master
 
-SCREEN_WIDTH = 430
-SCREEN_HEIGHT = 410
+        menu = Menu(self.master)
+        self.master.config(menu=menu)
 
-#BLACK = (  0,   0,   0)
-WHITE = (255, 255, 255)
-RED   = (255,   0,   0)
+        self.screenX = 0
+        self.screenY = 0
 
-FPS = 30
+        file_menu = Menu(menu)
+        file_submenu = Menu(file_menu)
+        file_menu.add_cascade(label="New File", menu=file_submenu)
 
-# --- classses --- (CamelCase names)
+        file_menu.add_command(label="Exit", command=self.exitProgram)
+        menu.add_cascade(label="File", menu=file_menu)
 
-# empty
+        edit_menu = Menu(menu)
+        menu.add_cascade(label="Edit", menu=edit_menu)
 
-# --- functions --- (lower_case names)
+        view_menu = Menu(menu)
+        view_menu.add_command(label="HSV Color")
+        view_menu.add_command(label="Histogram", command=self.histogram_window)
+        view_menu.add_command(label="Equalize", command=self.equalize_histogram)
+        menu.add_cascade(label="View", menu = view_menu)
 
-# empty
+        Label(master, text="x: ").grid(row=0, column=0)
+        Label(master, text="y: ").grid(row=1, column=0)
+        Label(master, text="color: ").grid(row=2, column=0)
 
-# --- main ---
+        self.xLabel = Label(master, text="0")
+        self.xLabel.grid(row=0, column=1)
+        self.yLabel = Label(master, text="0")
+        self.yLabel.grid(row=1, column=1)
+        self.valueEntry = Entry(master, text="First Name")
+        self.valueEntry.grid(row=2, column=1)
+        Label(master, text="Pixel amount: ").grid(row=3, column=0)
+        self.pixel_amount = Label(master, text="0")
+        self.pixel_amount.grid(row=3, column=1)
+        Label(master, text="Grayscale average: ").grid(row=4, column=0)
+        self.gray_avg = Label(master, text="0")
+        self.gray_avg.grid(row=4, column=1)
 
-# - init -
+        Label(master, text="Region seleccionada: ").grid(row=5, column=0)
+        Label(master, text="Grey Average: ").grid(row=6, column=0)
+        Label(master, text="Red Average: ").grid(row=7, column=0)
+        Label(master, text="Green Average ").grid(row=8, column= 0)
+        Label(master, text="Blue Average ").grid(row=9, column= 0)
 
-pygame.init()
+        self.selection_pixel_count = Label(master, text="0")
+        self.selection_pixel_count.grid(row=5, column=2)
+        self.grey_pixel_average = Label(master, text="0")
+        self.grey_pixel_average.grid(row=6, column=2)
 
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-#screen_rect = screen.get_rect()
+        self.red_pixel_average = Label(master, text="0")
+        self.red_pixel_average.grid(row=7, column=2)
 
-pygame.display.set_caption("Tracking System")
+        self.green_pixel_average = Label(master, text="0")
+        self.green_pixel_average.grid(row=8, column=2)
 
-# - objects -
+        self.blue_pixel_average = Label(master, text="0")
+        self.blue_pixel_average.grid(row=9, column=2)
 
-rectangle = pygame.rect.Rect(176, 134, 17, 17)
-rectangle_draging = False
+    def exitProgram(self):
+        pygame.display.quit()
+        pygame.quit()
+        exit()
 
-# - mainloop -
+    def setValueEntry(self, x, y, value):
+        self.xLabel['text'] = x
+        self.yLabel['text'] = y
+        self.valueEntry.delete(0, END)
+        self.valueEntry.insert(0, value)
 
-clock = pygame.time.Clock()
+    def display_pixelval(self, x, y, value, screenx, screeny):
+        self.xLabel['text'] = x
+        self.yLabel['text'] = y
+        self.valueEntry.delete(0, END)
+        self.valueEntry.insert(0, value)
+        self.screenX = screenx
+        self.screenY = screeny
 
-running = True
+    def display_gray_pixamount(self, amount, grayavg):
+        self.pixel_amount['text'] = amount
+        self.gray_avg['text'] = grayavg
 
-while running:
+    def histogram_window(self):
+        """Following libraries needed:
+        import matplotlib.pyplot as plt
+        import math"""
+        yvals, xvals = get_histogram(editableImage.data, 5, 0) # or get editableimage in a more dynamic way
+        display_histogram(xvals, yvals)
 
-    # - events -
+    def equalize_histogram(self):
+        yvals, xvals = get_histogram(editableImage.data, 1, 0)
+        cs = cum_sum(yvals)
+        cs = normalize(cs)
+        img = np.asarray(editableImage.data)
+        flat = img.flatten()
+        img_new = cs[flat]
+        img_new = np.reshape(img_new, img.shape)
+        editableImage.data = img_new
+        drawATIImage(editableImage)
+
+def display_histogram(xaxis, yaxis):
+    plt.figure(figsize=[10, 8])
+    plt.bar(xaxis, yaxis, width=5, color='#0504aa', alpha=0.7)
+    #plt.xlim(0, max(xvals))
+    plt.grid(axis='y', alpha=0.75)
+    plt.xlabel('Value', fontsize=10)
+    plt.ylabel('Frequency', fontsize=10)
+    plt.xticks(fontsize=10)
+    plt.yticks(fontsize=10)
+    plt.ylabel('Frequency', fontsize=15)
+    plt.title('Histogram', fontsize=15)
+    plt.show()
+
+
+def get_histogram(imgdata, step, band):
+    xpoints = []
+    ypoints = []
+    steps = int(round(255/step))
+    xpoint = 0
+    for i in range(steps+1):
+        ypoints.append(0)
+        xpoints.append(xpoint)
+        xpoint += step
+    for row in imgdata:
+        for col in row:
+            ypoints[int(math.trunc(col[band]/step))] += 1
+    return ypoints, xpoints
+
+
+def cum_sum(hist):
+    hist = iter(hist)
+    cumarray = [next(hist)]
+    for i in hist:
+        cumarray.append(cumarray[-1] + i)
+    return np.array(cumarray)
+
+
+def normalize(cs):
+    n = (cs - cs.min())
+    N = cs.max() - cs.min()
+    cs = (n / N) * 255
+    cs = np.rint(cs)
+    cs = cs.astype(int)
+    return cs
+
+
+def open_raw():
+    global editableImage
+    global originalImage
+
+    width = int(290)
+    height = int(207)
+
+    file = open("testing-images/barco.raw", "rb")
+    image = []
+    surface = pygame.display.set_mode((width, height))
+
+    for y in range(height):
+        tmpList = []
+        for x in range(width):
+            color = int.from_bytes(file.read(1), byteorder="big")
+
+            surface.set_at((x, y), (color, color, color))
+            tmpList.append([color, color, color])
+        image.append(tmpList)
+
+    editableImage.height = height
+    editableImage.width = width
+    editableImage.data = image
+
+    originalImage.height = height
+    originalImage.width = width
+    originalImage.data = image
+    drawImages()
+    file.close()
+
+
+def drawImages():
+    global editableImage
+    global originalImage
+    editableImage.topleft = [20, 20]
+    # originalImage.topleft = [40 + originalImage.width, 20]
+    originalImage.set_top_left([40 + originalImage.width, 20])
+    editableImage.active = True
+    originalImage.active = False
+
+    pygame.display.set_mode((60 + editableImage.width * 2, 40 + editableImage.height))
+    drawATIImage(editableImage)
+    drawATIImage(originalImage)
+
+
+def drawATIImage(image):
+    height = image.height
+    width = image.width
+    surface = pygame.display.get_surface()
+    for x in range(width):
+        for y in range(height):
+            surface.set_at((x + image.topleft[0], y + image.topleft[1]), image.get_at([x, y]))
+
+
+def quit_callback():
+    global Done
+    Done = True
+
+
+def getInput():
+    global dragging
+    global startx
+    global starty
+    global newselection
+    global isSelectionActive
+    global lastaction
 
     for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-
-        elif event.type == pygame.MOUSEBUTTONDOWN:
+        if event.type == QUIT:
+            return True
+        elif event.type == MOUSEBUTTONDOWN:
             if event.button == 1:
-                if rectangle.collidepoint(event.pos):
-                    rectangle_draging = True
-                    mouse_x, mouse_y = event.pos
-                    offset_x = rectangle.x - mouse_x
-                    offset_y = rectangle.y - mouse_y
-
-        elif event.type == pygame.MOUSEBUTTONUP:
+                lastaction = "mousedown"
+        elif event.type == MOUSEBUTTONUP:
             if event.button == 1:
-                rectangle_draging = False
+                dragging = False
+            lastaction = "mouseup"
+        elif event.type == MOUSEMOTION:
+            lastaction="mousemotion"
+        sys.stdout.flush()  # get stuff to the console
+    return False
 
-        elif event.type == pygame.MOUSEMOTION:
-            if rectangle_draging:
-                mouse_x, mouse_y = event.pos
-                rectangle.x = mouse_x + offset_x
-                rectangle.y = mouse_y + offset_y
 
-    # - updates (without draws) -
+def main():
+    # initialise pygame
 
-    # empty
+    root.wm_title("Tkinter window")
+    root.protocol("WM_DELETE_WINDOW", quit_callback)
+    surface.fill((255, 255, 255))
+    open_raw()
+    done = False
+    while not done:
+        try:
+            app.update()
+        except:
+            print("dialog error")
+        if getInput():
+            done = True
+        pygame.display.flip()
 
-    # - draws (without updates) -
 
-    screen.fill(WHITE)
+root = Tk()
+pygame.init()
+ScreenSize = (1, 1)
+surface = pygame.display.set_mode(ScreenSize)
+images = [] #list of images, in case we need to be more flexible than just one editable and one original image, possible to add more.
+app = Window(root)
+Done = False
 
-    pygame.draw.rect(screen, RED, rectangle)
+dragging = False
+startx = None
+starty = None
+newselection = Selection()
+isSelectionActive = False
+lastaction = None
 
-    pygame.display.flip()
+editableImage = ATIImage(editable=True)
+originalImage = ATIImage()
 
-    # - constant game speed / FPS -
+images.append(editableImage)
+images.append(originalImage)
 
-    clock.tick(FPS)
-
-# - end -
-
-pygame.quit()
+if __name__ == '__main__': main()
