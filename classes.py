@@ -1,5 +1,7 @@
 from tkinter import *
 import math
+import random
+import numpy
 
 class square:
     def __init__(self, radius, pos):
@@ -55,3 +57,25 @@ class Selection:
 
     def get_pixel_count(self):
         return self.get_width().__str__() + " x " + self.get_height().__str__()
+
+
+class ATIRandom:
+    def __init__(self):
+        pass
+
+    @classmethod
+    def random(cls):
+        return random.random()
+
+    @classmethod
+    def gaussian(cls, sigma, mu):
+        return numpy.random.normal(mu, sigma)
+
+    @classmethod
+    def exponential(cls, gamma):
+        return numpy.random.exponential(gamma)
+
+    @classmethod
+    def rayleigh(cls, epsilon):
+        return numpy.random.rayleigh(epsilon)
+
