@@ -1,6 +1,6 @@
 import math
 import copy
-
+from classes import *
 
 class ATIImage(object):
     def __init__(self, data=None, width=0, height=0, type=0, topleft=None, active=False, editable=False,
@@ -145,6 +145,78 @@ class ATIImage(object):
     def set_at_band(self, pos, color, band):
         self.data[pos[1]][pos[0]][band] = color
 
+    """
+    
+    Noises
+    
+    """
+    def noise_gaussian(self, percent, mu=0, sigma=1):
+        # Gaussian is Aditive
+        for x in range(self.width):
+            for y in range(self.height):
+                if ATIRandom.has_to_apply(percent):
+                    variation = ATIRandom.gaussian(sigma=sigma, mu= mu)
+                    self.set_at_band((x, y), self.get_at(x, y)[0] + variation, 0)
+                    self.set_at_band((x, y), self.get_at(x, y)[1] + variation, 1)
+                    self.set_at_band((x, y), self.get_at(x, y)[2] + variation, 2)
+        return
+
+    def noise_rayleigh(self, percent, epsilon):
+        # Rayleigh is Multiplicative
+        for x in range(self.width):
+            for y in range(self.height):
+                if ATIRandom.has_to_apply(percent):
+                    variation = ATIRandom.rayleigh(epsilon)
+                    self.set_at_band((x, y), self.get_at(x, y)[0] * variation, 0)
+                    self.set_at_band((x, y), self.get_at(x, y)[1] * variation, 1)
+                    self.set_at_band((x, y), self.get_at(x, y)[2] * variation, 2)
+        return
+
+    def noise_exponential(self, percent, gamma):
+        # Rayleigh is Multiplicative
+        for x in range(self.width):
+            for y in range(self.height):
+                if ATIRandom.has_to_apply(percent):
+                    variation = ATIRandom.exponential(gamma)
+                    self.set_at_band((x, y), self.get_at(x, y)[0] * variation, 0)
+                    self.set_at_band((x, y), self.get_at(x, y)[1] * variation, 1)
+                    self.set_at_band((x, y), self.get_at(x, y)[2] * variation, 2)
+        return
+
+    def noise_salt_and_pepper(self, density):
+        # Rayleigh is Multiplicative
+        for x in range(self.width):
+            for y in range(self.height):
+                random = ATIRandom.random()
+                if random <= density:
+                    self.set_at((x, y), [0, 0, 0])
+                if random >= (1 - p):
+                    self.set_at((x, y), [255, 255, 255])
+        return
+
+    """@classmethod
+    def add_image(cls, img1, img2):
+        if img1.width != img2.width or img1.height != img2 != img2.height:
+            raise Exception('Image should be same width and height')
+        image = []
+        for x in range(img1.width):
+            tmp_list = []
+            for y in range(img1.height):
+                tmp_list.append([
+                    img1.get_at((x, y))[0] + img2.get_at((x, y))[0],
+                    img1.get_at((x, y))[1] + img2.get_at((x, y))[1],
+                    img1.get_at((x, y))[2] + img2.get_at((x, y))[2]
+                ])
+            image.append(tmp_list)
+        return cls(image, img1.width, img2.height, img1.type, img1.topLeft)"""
+
+
+    """
+    
+    Image Operations
+    
+    """
+
     # Add Images
     def add_image(self, image):
         if self.width != image.width or self.height != image.height:
@@ -175,22 +247,6 @@ class ATIImage(object):
         if not (0 <= val_min_band <= val_max_band <= 255):
             return True
         return False
-
-    """@classmethod
-    def add_image(cls, img1, img2):
-        if img1.width != img2.width or img1.height != img2 != img2.height:
-            raise Exception('Image should be same width and height')
-        image = []
-        for x in range(img1.width):
-            tmp_list = []
-            for y in range(img1.height):
-                tmp_list.append([
-                    img1.get_at((x, y))[0] + img2.get_at((x, y))[0],
-                    img1.get_at((x, y))[1] + img2.get_at((x, y))[1],
-                    img1.get_at((x, y))[2] + img2.get_at((x, y))[2]
-                ])
-            image.append(tmp_list)
-        return cls(image, img1.width, img2.height, img1.type, img1.topLeft)"""
 
     # Subtract images
     def subtract_image(self, image):

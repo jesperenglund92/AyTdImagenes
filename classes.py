@@ -79,3 +79,6 @@ class ATIRandom:
     def rayleigh(cls, epsilon):
         return numpy.random.rayleigh(epsilon)
 
+    @classmethod
+    def has_to_apply(cls, value):
+        return cls.random() <= value
