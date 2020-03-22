@@ -1,6 +1,6 @@
 import math
 
-from tkinter import filedialog, font
+from tkinter import filedialog, font, messagebox
 from tkinter import *
 import pygame
 import sys
@@ -25,38 +25,40 @@ class Window(Frame):
         Frame.__init__(self, master)
         self.master = master
 
-        menu = Menu(self.master)
-        self.master.config(menu=menu)
+        self.menu = Menu(self.master)
+        self.master.config(menu=self.menu)
 
         self.screenX = 0
         self.screenY = 0
 
-        file_menu = Menu(menu)
-        file_submenu = Menu(file_menu)
-        file_submenu.add_command(label="circle", command=newWhiteCircle)
-        file_submenu.add_command(label="Square", command=newWhiteSquare)
-        file_submenu.add_command(label="Empty File", state="disabled")
-        file_menu.add_cascade(label="New File", menu=file_submenu)
+        self.image_loaded = DISABLED
 
-        file_menu.add_command(label="Load Image", command=self.openFile)
-        file_menu.add_command(label="Save File", command=self.saveFile, state="disabled")
-        file_menu.add_command(label="Exit", command=self.exitProgram)
-        menu.add_cascade(label="File", menu=file_menu)
+        self.file_menu = Menu(self.menu)
+        self.file_submenu = Menu(self.file_menu)
+        self.file_submenu.add_command(label="circle", command=newWhiteCircle)
+        self.file_submenu.add_command(label="Square", command=newWhiteSquare)
+        self.file_submenu.add_command(label="Empty File", state=self.image_loaded)
+        self.file_menu.add_cascade(label="New File", menu=self.file_submenu)
 
-        edit_menu = Menu(menu)
-        edit_menu.add_command(label="Copy", command=self.copy_window)
-        edit_menu.add_command(label="Operations", command=self.operations_window)
-        edit_menu.add_command(label="Threshold Image", command=self.threshold_window)
-        edit_menu.add_command(label="Equalize Image", command=self.equalization_window)
-        edit_menu.add_command(label="Negative", command=self.make_negative)
-        edit_menu.add_command(label="Copy selection", command=copySelection)
-        edit_menu.add_command(label="Add Noise", command=self.open_noise_window)
-        menu.add_cascade(label="Edit", menu=edit_menu)
+        self.file_menu.add_command(label="Load Image", command=self.openFile)
+        self.file_menu.add_command(label="Save File", command=self.saveFile, state=self.image_loaded)
+        self.file_menu.add_command(label="Exit", command=self.exitProgram)
+        self.menu.add_cascade(label="File", menu=self.file_menu)
 
-        view_menu = Menu(menu)
-        view_menu.add_command(label="HSV Color")
-        view_menu.add_command(label="Histogram", command=self.histogram_window)
-        menu.add_cascade(label="View", menu=view_menu)
+        self.edit_menu = Menu(self.menu)
+        self.edit_menu.add_command(label="Copy", command=self.copy_window)
+        self.edit_menu.add_command(label="Operations", command=self.operations_window)
+        self.edit_menu.add_command(label="Threshold Image", command=self.threshold_window)
+        self.edit_menu.add_command(label="Equalize Image", command=self.equalization_window)
+        self.edit_menu.add_command(label="Negative", command=self.make_negative)
+        self.edit_menu.add_command(label="Copy selection", command=copySelection)
+        self.edit_menu.add_command(label="Add Noise", command=self.open_noise_window)
+        self.menu.add_cascade(label="Edit", menu=self.edit_menu)
+
+        self.view_menu = Menu(self.menu)
+        self.view_menu.add_command(label="HSV Color")
+        self.view_menu.add_command(label="Histogram", command=self.histogram_window)
+        self.menu.add_cascade(label="View", menu=self.view_menu)
 
         Label(master, text="x: ").grid(row=0, column=0)
         Label(master, text="y: ").grid(row=1, column=0)
@@ -104,6 +106,12 @@ class Window(Frame):
         pygame.display.quit()
         pygame.quit()
         exit()
+
+    def enable_image_menues(self):
+        self.file_menu.entryconfigure(2, state=NORMAL)
+        # self.file_menu.entryconfigure(1, state=NORMAL)
+
+        pass
 
     def setValueEntry(self, x, y, value):
         self.xLabel['text'] = x
@@ -511,6 +519,7 @@ class Window(Frame):
         image = editableImage.get_data()
         width = editableImage.get_size()[0]
         height = editableImage.get_size()[1]
+
         ## TODO: Write headers
 
         for y in range(height):
@@ -551,16 +560,15 @@ class Window(Frame):
 
             file = open(self.file.name, "rb")
             image = []
-            surface = pygame.display.set_mode((width, height))
 
             for y in range(height):
-                tmpList = []
+                tmp_list = []
                 for x in range(width):
-                    color = int.from_bytes(file.read(1), byteorder="big")
+                    image_color = int.from_bytes(file.read(1), byteorder="big")
+                    tmp_list.append([image_color, image_color, image_color])
+                image.append(tmp_list)
 
-                    surface.set_at((x, y), (color, color, color))
-                    tmpList.append([color, color, color])
-                image.append(tmpList)
+            app.enable_image_menues()
             self.window.destroy()
 
             editableImage.height = height
@@ -578,15 +586,18 @@ class Window(Frame):
         window = self.__RawWindow(file)
 
     def saveRaw(self, file):
-        image = editableImage.get_data()
-        width = editableImage.get_size()[0]
-        height = editableImage.get_size()[1]
 
+        image = editableImage
+        width = image.width
+        height = image.height
+        file = open(file.name, "wb")
         # surface = pygame.display.set_mode((width, height))
         for y in range(height):
             for x in range(width):
-                color = int.to_bytes(image[x][y], byteorder="big")
-                file.write(color)
+                file.write(int.to_bytes(image.get_at((x, y))[0], length=1, byteorder="big"))
+        file.close()
+        messagebox.showinfo("File was successfully save", "The file is in: " + file.name)
+
         pass
 
     def openFile(self):
@@ -624,13 +635,16 @@ class Window(Frame):
             print("cancelled")
 
     def saveFile(self):
-        file = filedialog.asksaveasfile(mode='w', defaultextension=editableImage.get_type())
+        file = filedialog.asksaveasfile(mode='w', defaultextension=editableImage.image_color_type())
+        if file is None:
+            return
+
         if file:
-            if file.name.lower().endswith(('.raw')):
+            if file.name.lower().endswith('.raw'):
                 self.saveRaw(file)
-            if file.name.lower().endswith(('.pgm')):
+            if file.name.lower().endswith('.pgm'):
                 self.savePgm(file)
-            if file.name.lower().endswith(('.ppm')):
+            if file.name.lower().endswith('.ppm'):
                 self.savePpm(file)
         pass
 
