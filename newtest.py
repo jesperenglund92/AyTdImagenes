@@ -17,6 +17,7 @@ class Window(Frame):
         self.screenX = 0
         self.screenY = 0
 
+
         file_menu = Menu(menu)
         file_submenu = Menu(file_menu)
         file_menu.add_cascade(label="New File", menu=file_submenu)
@@ -25,6 +26,13 @@ class Window(Frame):
         menu.add_cascade(label="File", menu=file_menu)
 
         edit_menu = Menu(menu)
+        edit_submenu = Menu(edit_menu)
+        edit_menu.add_cascade(label="Filter", menu=edit_submenu)
+        edit_submenu.add_command(label="Average", command=lambda:self.set_kernel_size("avg"))
+        edit_submenu.add_command(label="Median", command=lambda: self.set_kernel_size("mdn"))
+        edit_submenu.add_command(label="Median weighted", command=filter_image_mdnp)
+        edit_submenu.add_command(label="Gauss", command=lambda: self.set_kernel_size("gau"))
+        edit_submenu.add_command(label="Edge enhancement", command=self.set_edge_level)
         menu.add_cascade(label="Edit", menu=edit_menu)
 
         view_menu = Menu(menu)
@@ -110,6 +118,143 @@ class Window(Frame):
         img_new = np.reshape(img_new, img.shape)
         editableImage.data = img_new
         drawATIImage(editableImage)
+
+
+    def set_edge_level(self):
+        window = Tk()
+        window.focus_set()
+        window.title("Edge enhancement level")
+        Label(window, text="Level (0-1): ").grid(row=0, column=0)
+        level = Entry(window)
+        level.grid(row=0, column=1)
+        Button(window, text="Change", command=lambda: edge_enhance(level.get())).grid(row=0, column=2)
+
+
+    def set_kernel_size(self, type):
+        window = Tk()
+        window.focus_set()
+        window.title("Mask size")
+        Label(window, text="Size: ").grid(row=0, column=0)
+        size = Entry(window)
+        size.grid(row=0, column=1)
+        if type == "gau":
+            Label(window, text="Sigma: ").grid(row=1, column=0)
+            sigma = Entry(window)
+            sigma.grid(row=1, column=1)
+            Button(window, text="Change", command=lambda: which_filter(size.get(), type, sigma.get())).grid(row=0, column=2)
+        else:
+            Button(window, text="Change", command=lambda: which_filter(size.get(), type)).grid(row=0, column=2)
+
+
+def which_filter(size, type, sigma=None):
+    if type == "avg":
+        filter_image_avg(size)
+    elif type == "mdn":
+        filter_image_mdn(size)
+    elif type == "gau":
+        filter_image_gauss(size, sigma)
+
+
+def redraw_img(img, filtimg):
+    filtimg = np.repeat(filtimg, 3)
+    filtimg = filtimg.reshape((img.shape[0], img.shape[1], 3))
+    editableImage.data = filtimg
+    drawATIImage(editableImage)
+
+
+def edge_enhance(level):
+    level = float(level)
+    img = np.array(originalImage.data)[:, :, 0]
+    Hx = np.matrix([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
+    Hy = np.matrix([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
+    size = 3
+    pad = int((size - 1) / 2)
+    Gx = convolve_func_avg(img, Hx, pad, size)
+    Gy = convolve_func_avg(img, Hy, pad, size)
+    G = np.sqrt(Gx ** 2 + Gy ** 2)
+    const = level
+    new_img = img + G * const
+    new_img = normalize(new_img)
+    redraw_img(img, new_img)
+
+
+def filter_image_gauss(size, sigma):
+    size = int(size)
+    sigma = float(sigma)
+    N = (size - 1)/2
+    pad = int((size - 1) / 2)
+    img = np.array(originalImage.data)[:, :, 0]
+    x, y = np.mgrid[-N:N + 1, -N:N + 1]
+    k = 1/(2 * math.pi * sigma ** 2)
+    gausskernel = k * np.exp(-(x ** 2 + y ** 2) / (2 * sigma ** 2))
+    mask = gausskernel/np.sum(gausskernel)
+    gaussimg = convolve_func_avg(img, mask, pad, size)
+    redraw_img(img, gaussimg)
+
+
+def filter_image_mdnp():
+    size = 3
+    mask = np.matrix([[1, 2, 1], [2, 4, 2], [1, 2, 1]])
+    pad = int((size - 1) / 2)
+    img = np.array(originalImage.data)[:, :, 0]
+    mdn = convolve_func_mdnp(img, mask, pad, size)
+    redraw_img(img, mdn)
+
+
+def filter_image_mdn(size):
+    size = int(size)
+    pad = int((size - 1) / 2)
+    img = np.array(originalImage.data)[:, :, 0]
+    mdn = convolve_func_mdn(img, pad, size)
+    redraw_img(img, mdn)
+
+
+def filter_image_avg(size):
+    size = int(size)
+    mask = np.ones((size, size))
+    k = 1/(size**2)
+    mask = k * mask
+    pad = int((size - 1)/2)
+    img = np.array(originalImage.data)[:, :, 0]
+    avg = convolve_func_avg(img, mask, pad, size)
+    redraw_img(img, avg)
+
+
+def convolve_func_mdnp(img, mask, pad, size):
+    output = np.zeros_like(img)
+    image_padded = np.zeros((img.shape[0] + pad * 2, img.shape[1] + pad * 2))
+    image_padded[pad:-pad, pad:-pad] = img
+    flatmask = np.array(mask).flatten()
+    for x in range(img.shape[1]):
+        for y in range(img.shape[0]):
+            weightmdn = []
+            flatarea = image_padded[y:y + size, x:x + size].flatten()
+            for i in range(len(flatmask)):
+                for j in range(flatmask[i]):
+                    weightmdn.append(flatarea[i])
+            output[y, x] = np.median(weightmdn)
+    return output
+
+
+def convolve_func_mdn(img, pad, size):
+    output = np.zeros_like(img)
+    image_padded = np.zeros((img.shape[0] + pad * 2, img.shape[1] + pad * 2))
+    image_padded[pad:-pad, pad:-pad] = img
+    for x in range(img.shape[1]):
+        for y in range(img.shape[0]):
+            output[y, x] = np.median(image_padded[y:y + size, x:x + size])
+    return output
+
+
+def convolve_func_avg(img, mask, pad, size):
+    output = np.zeros_like(img)
+    image_padded = np.zeros((img.shape[0] + pad*2, img.shape[1] + pad*2))
+    image_padded[pad:-pad, pad:-pad] = img
+    for x in range(img.shape[1]):
+        for y in range(img.shape[0]):
+            output[y, x] = (mask * image_padded[y:y + size, x:x + size]).sum()
+    return output
+
 
 def display_histogram(xaxis, yaxis):
     plt.figure(figsize=[10, 8])

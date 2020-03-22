@@ -18,7 +18,7 @@ G = np.sqrt(Gx**2 + Gy**2)
 
 
 fig, [[ax1, ax2], [ax3, ax4]] = plt.subplots(nrows=2, ncols=2)
-ax1.imshow(I, cmap = "gray")
+ax1.imshow(I+G*0.1, cmap = "gray")
 ax2.imshow(G, cmap = "gray")
 ax3.imshow(Gx, cmap = "gray")
 ax4.imshow(Gy, cmap = "gray")

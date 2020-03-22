@@ -7,7 +7,7 @@ import imageio
 
 # Uppgift 2
 
-N = 10
+N = 4
 I = np.mean(imageio.imread("lynn-eyes-halftone.png"), axis=2)
 
 sigma = N/6
@@ -15,6 +15,7 @@ sigma = N/6
 def gaussblur_a(I, N):
     # Skapar en gauss-filterkärna och dividerar med sin summa, så att kärnan summerar till 1
     x, y = np.mgrid[-N:N+1, -N:N+1]
+    print(x,y)
     gausskernel = np.exp(-(x**2 + y**2)/(2 * sigma**2))
     core = gausskernel / np.sum(gausskernel)
 
