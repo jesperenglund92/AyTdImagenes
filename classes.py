@@ -3,7 +3,8 @@ import math
 import random
 import numpy
 
-class square:
+
+class Square:
     def __init__(self, radius, pos):
         self.radius = radius
         self.pos = pos
@@ -13,37 +14,42 @@ class square:
 
 
 class Selection:
-    def __init__(self, color=(255,255,255)):
+    def __init__(self, color=(255, 255, 255)):
         self.color = color
         self.image = -1
+        self.x = 0
+        self.y = 0
+        self.new_x = self.x
+        self.new_y = self.y
+        self.prev_x = 0
+        self.prev_y = 0
 
-    def set_startpos(self, startpos):
-        self.x = startpos[0]
-        self.y = startpos[1]
-        self.newx = self.x
-        self.newy = self.y
+    def set_start_pos(self, start_pos):
+        self.x = start_pos[0]
+        self.y = start_pos[1]
+        self.new_x = self.x
+        self.new_y = self.y
 
-
-    def set_newpos(self, newpos):
-        self.prevx = self.newx
-        self.prevy = self.newy
-        self.newx = newpos[0]
-        self.newy = newpos[1]
+    def set_new_pos(self, new_pos):
+        self.prev_x = self.new_x
+        self.prev_y = self.new_y
+        self.new_x = new_pos[0]
+        self.new_y = new_pos[1]
 
     def get_top_left(self):
-        return [min(self.x, self.newx), min(self.y, self.newy)]
+        return [min(self.x, self.new_x), min(self.y, self.new_y)]
 
     def get_botton_right(self):
-        return [max(self.x, self.newx), max(self.y, self.newy)]
+        return [max(self.x, self.new_x), max(self.y, self.new_y)]
 
     def get_prev_top_left(self):
-        return [min(self.x, self.prevx), min(self.y, self.prevy)]
+        return [min(self.x, self.prev_x), min(self.y, self.prev_y)]
 
     def get_prev_botton_right(self):
-        return [max(self.x, self.prevx), max(self.y, self.prevy)]
+        return [max(self.x, self.prev_x), max(self.y, self.prev_y)]
 
-    def set_image(self, id):
-        self.image = id
+    def set_image(self, image_id):
+        self.image = image_id
 
     def get_width(self):
         tl = self.get_top_left()
@@ -69,15 +75,15 @@ class ATIRandom:
 
     @classmethod
     def gaussian(cls, sigma, mu):
-        return numpy.random.normal(mu, sigma)
+        return numpy.random.normal(float(mu), float(sigma))
 
     @classmethod
     def exponential(cls, gamma):
-        return numpy.random.exponential(gamma)
+        return numpy.random.exponential(float(gamma))
 
     @classmethod
     def rayleigh(cls, epsilon):
-        return numpy.random.rayleigh(epsilon)
+        return numpy.random.rayleigh(float(epsilon))
 
     @classmethod
     def has_to_apply(cls, value):
