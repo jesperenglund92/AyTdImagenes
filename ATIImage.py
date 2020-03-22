@@ -3,25 +3,27 @@ from classes import *
 
 
 class ATIImage(object):
-    def __init__(self, data=None, width=0, height=0, img_type=0, topleft=None, active=False, editable=False,
+    def __init__(self, data=None, width=0, height=0, image_type=0, topleft=None, active=False, editable=False,
                  values_set=False):
         if data is None:
             data = []
         self.data = data
         self.width = width
         self.height = height
-        self.img_type = img_type
+        self.image_type = image_type
         self.topleft = topleft
         # use these sort of attributes to separate different images from each other when iterating through "images" list
         self.editable = editable
         self.values_set = values_set
         self.active = active
+        self.magic_num = None
+        self.max_gray_level = None
 
     def get_copy(self):
         new_data = self.__copy_data()
         new_width = copy.copy(self.width)
         new_height = copy.copy(self.height)
-        new_type = copy.copy(self.img_type)
+        new_type = copy.copy(self.image_type)
         new_tl = copy.copy(self.topleft)
         new_activate = copy.copy(self.active)
         new_editable = copy.copy(self.editable)
@@ -30,6 +32,8 @@ class ATIImage(object):
         copy_image = ATIImage(new_data, new_width, new_height,
                               new_type, new_tl, new_activate, new_editable,
                               new_value_set)
+        copy_image.magic_num = self.magic_num
+        copy_image.max_gray_level = self.max_gray_level
         # copy_image = copy.deepcopy(self)
         return copy_image
 
@@ -43,7 +47,7 @@ class ATIImage(object):
         return new_data
 
     def image_color_type(self):
-        if self.img_type == '.raw' or self.img_type == '.pgm':
+        if self.image_type == '.raw' or self.image_type == '.pgm':
             return 'g'
         return 'rgb'
 

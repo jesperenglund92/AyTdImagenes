@@ -433,17 +433,17 @@ class Window(Frame):
                 continue
             count = count + 1
             if count == 1:  # Magic num info
-                magicNum = line.strip()
-                magic_num_as_bytes = int.from_bytes(magicNum, byteorder="big")
-
-                if not (magicNum == 'P3' or magicNum == 'P6' or magic_num_as_bytes == 20534):
+                magic_num = line.strip()
+                magic_num = magic_num.decode('utf-8')
+                # magic_num_as_bytes = int.from_bytes(magic_num, byteorder="big")
+                if not (magic_num == 'P3' or magic_num == 'P6'):
                     print('Not a valid PPM file')
             elif count == 2:  # Width and Height
                 [width, height] = (line.strip()).split()
                 width = int(width)
                 height = int(height)
             elif count == 3:  # Max gray level
-                maxVal = int(line.strip())
+                max_val = int(line.strip())
         image = []
         # surface = pygame.display.set_mode((width, height))
         for y in range(height):
@@ -458,24 +458,55 @@ class Window(Frame):
         editableImage.data = image
         editableImage.width = width
         editableImage.height = height
+        editableImage.magic_num = magic_num
+        editableImage.max_gray_level = max_val
 
         originalImage = editableImage.get_copy()
 
-        # originalImage.data = image
-        # originalImage.width = width
-        # originalImage.height = height
+        app.enable_image_menues()
+
+    def write_ppm_pgm_headers(self, file, image):
+        width = image.width
+        height = image.height
+        magic_num = image.magic_num
+        if magic_num is None:
+            if image.image_type == '.ppm':
+                magic_num = 'P6'
+            elif image.image_type == '.pgm':
+                magic_num = 'P5'
+            else:
+                raise Exception("Invalid Image Type")
+
+        file.write(magic_num)
+        file.write('\n')
+        file.write(image.width.__str__())
+        file.write(' ')
+        file.write(image.height.__str__())
+        file.write('\n')
+        max_gray_level = image.max_gray_level
+        if max_gray_level is None:
+            max_gray_level = 255
+        file.write(max_gray_level.__str__())
+        file.write('\n')
 
     def savePpm(self, file):
-        image = editableImage.get_data()
-        width = editableImage.get_size()[0]
-        height = editableImage.get_size()[1]
-        ## TODO: Write headers
+        image = editableImage
+        width = editableImage.width
+        height = editableImage.height
+
+        # Write Headers
+        self.write_ppm_pgm_headers(file, image)
+
+        file.close()
+        file = open(file.name, "ab")
 
         for y in range(height):
             for x in range(width):
-                file.write(int.to_bytes(image[x][y][0], byteorder="big"))
-                file.write(int.to_bytes(image[x][y][1], byteorder="big"))
-                file.write(int.to_bytes(image[x][y][2], byteorder="big"))
+                file.write(int.to_bytes(image.get_at((x, y))[0], length=1, byteorder="big"))
+                file.write(int.to_bytes(image.get_at((x, y))[1], length=1, byteorder="big"))
+                file.write(int.to_bytes(image.get_at((x, y))[2], length=1, byteorder="big"))
+        file.close()
+        messagebox.showinfo("File was successfully save", "The file is in: " + file.name)
         pass
 
     def loadPgm(self, file):
@@ -488,15 +519,16 @@ class Window(Frame):
                 continue
             count = count + 1
             if count == 1:  # Magic num info
-                magicNum = line.strip()
-                if magicNum != 'P2' or magicNum != 'P5':
+                magic_num = line.strip()
+                magic_num = magic_num.decode('utf-8')
+                if magic_num != 'P2' or magic_num != 'P5':
                     print('Not a valid PPM file')
             elif count == 2:  # Width and Height
                 [width, height] = (line.strip()).split()
                 width = int(width)
                 height = int(height)
             elif count == 3:  # Max gray level
-                maxVal = int(line.strip())
+                max_val = int(line.strip())
         image = []
         for y in range(height):
             tmpList = []
@@ -508,23 +540,28 @@ class Window(Frame):
         editableImage.data = image
         editableImage.width = width
         editableImage.height = height
+        editableImage.magic_num = magic_num
+        editableImage.max_gray_level = max_val
 
         originalImage = editableImage.get_copy()
 
-        # originalImage.data = image
-        # originalImage.width = width
-        # originalImage.height = height
+        app.enable_image_menues()
 
     def savePgm(self, file):
-        image = editableImage.get_data()
-        width = editableImage.get_size()[0]
-        height = editableImage.get_size()[1]
+        image = editableImage
+        width = editableImage.width
+        height = editableImage.height
 
-        ## TODO: Write headers
+        self.write_ppm_pgm_headers(file, image)
+        file.close()
+        file = open(file.name, 'ab')
 
         for y in range(height):
             for x in range(width):
-                file.write(int.to_bytes(image[x][y], byteorder="big"))
+                file.write(int.to_bytes(image.get_at((x, y))[0], length=1, byteorder="big"))
+        file.close()
+
+        messagebox.showinfo("File was successfully save", "The file is in: " + file.name)
         pass
 
     class __RawWindow:
@@ -576,9 +613,6 @@ class Window(Frame):
             editableImage.data = image
 
             originalImage = editableImage.get_copy()
-            # originalImage.height = height
-            # originalImage.width = width
-            # originalImage.data = image
             drawImages()
             file.close()
 
@@ -590,6 +624,7 @@ class Window(Frame):
         image = editableImage
         width = image.width
         height = image.height
+        file.close()
         file = open(file.name, "wb")
         # surface = pygame.display.set_mode((width, height))
         for y in range(height):
@@ -613,7 +648,6 @@ class Window(Frame):
         filename = filedialog.askopenfilename(initialdir="/", title="Select file", filetypes=ftypes)
         if filename:
             file = open(filename, "rb")
-
             if filename.lower().endswith(('.raw')):
                 editableImage.type = '.raw'
                 # originalImage.type = '.raw'
