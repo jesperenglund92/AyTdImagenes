@@ -3,7 +3,7 @@ from classes import *
 
 
 class ATIImage(object):
-    def __init__(self, data=None, width=0, height=0, image_type=0, topleft=None, active=False, editable=False,
+    def __init__(self, data=None, width=0, height=0, image_type=0, top_left=None, active=False, editable=False,
                  values_set=False):
         if data is None:
             data = []
@@ -11,7 +11,7 @@ class ATIImage(object):
         self.width = width
         self.height = height
         self.image_type = image_type
-        self.topleft = topleft
+        self.top_left = top_left
         # use these sort of attributes to separate different images from each other when iterating through "images" list
         self.editable = editable
         self.values_set = values_set
@@ -24,7 +24,7 @@ class ATIImage(object):
         new_width = copy.copy(self.width)
         new_height = copy.copy(self.height)
         new_type = copy.copy(self.image_type)
-        new_tl = copy.copy(self.topleft)
+        new_tl = copy.copy(self.top_left)
         new_activate = copy.copy(self.active)
         new_editable = copy.copy(self.editable)
         new_value_set = copy.copy(self.values_set)
@@ -52,17 +52,17 @@ class ATIImage(object):
         return 'rgb'
 
     def get_top_left(self):
-        return self.topleft
+        return self.top_left
 
     def get_botton_right(self):
-        return [self.topleft[0] + self.width, self.topleft[1] + self.height]
+        return [self.top_left[0] + self.width, self.top_left[1] + self.height]
 
     def in_display_image(self, pos):
         botton_right = self.get_botton_right()
-        return self.topleft[0] <= pos[0] <= botton_right[0] and self.topleft[1] <= pos[1] <= botton_right[1]
+        return self.top_left[0] <= pos[0] <= botton_right[0] and self.top_left[1] <= pos[1] <= botton_right[1]
 
     def set_top_left(self, pos):
-        self.topleft = pos
+        self.top_left = pos
 
     def get_red_band(self):
         data = []
@@ -95,11 +95,11 @@ class ATIImage(object):
         return self.data[pos[1]][pos[0]]
 
     def get_pos_display(self, pos):
-        return pos[0] - self.topleft[0], pos[1] - self.topleft[1]
+        return pos[0] - self.top_left[0], pos[1] - self.top_left[1]
 
     def get_at_display(self, pos):
-        x = pos[0] - self.topleft[0]
-        y = pos[1] - self.topleft[1]
+        x = pos[0] - self.top_left[0]
+        y = pos[1] - self.top_left[1]
         if not (0 <= x <= self.width):
             raise Exception("Invalid position")
         if not (0 <= y <= self.height):
@@ -107,8 +107,8 @@ class ATIImage(object):
         return self.get_at((x - 1, y - 1))
 
     def set_at_display(self, pos, color):
-        x = pos[0] - self.topleft[0] - 1
-        y = pos[1] - self.topleft[1] - 1
+        x = pos[0] - self.top_left[0] - 1
+        y = pos[1] - self.top_left[1] - 1
         if not (0 <= x <= self.width - 1):
             raise Exception("Invalid position")
         if not (0 <= y <= self.height - 1):
@@ -140,9 +140,9 @@ class ATIImage(object):
     def get_blue_average_display(self, tl, br):
         return self.__get_band_average_display(tl, br, 2)
 
-    def get_at_screenpos(self, x, y):
+    def get_at_screen_position(self, x, y):
         # get colorvalue based on a screen position
-        return self.data[y - self.topleft[1]][x - self.topleft[0]]
+        return self.data[y - self.top_left[1]][x - self.top_left[0]]
 
     def set_at(self, pos, color):
         self.data[pos[1]][pos[0]] = color
