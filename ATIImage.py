@@ -1,18 +1,19 @@
-import math
 import copy
+from classes import *
 
 
 class ATIImage(object):
-    def __init__(self, data=None, width=0, height=0, type=0, topleft=None, active=False, editable=False,
+    def __init__(self, data=None, width=0, height=0, img_type=0, topleft=None, active=False, editable=False,
                  values_set=False):
         if data is None:
             data = []
         self.data = data
         self.width = width
         self.height = height
-        self.type = type
+        self.img_type = img_type
         self.topleft = topleft
-        self.editable = editable  # use these sort of attributes to separate different images from eachother when iterating through "images" list
+        # use these sort of attributes to separate different images from each other when iterating through "images" list
+        self.editable = editable
         self.values_set = values_set
         self.active = active
 
@@ -20,7 +21,7 @@ class ATIImage(object):
         new_data = self.__copy_data()
         new_width = copy.copy(self.width)
         new_height = copy.copy(self.height)
-        new_type = copy.copy(self.type)
+        new_type = copy.copy(self.img_type)
         new_tl = copy.copy(self.topleft)
         new_activate = copy.copy(self.active)
         new_editable = copy.copy(self.editable)
@@ -35,14 +36,14 @@ class ATIImage(object):
     def __copy_data(self):
         new_data = []
         for y in range(self.height):
-            tmpRow = []
+            tmp_row = []
             for x in range(self.width):
-                tmpRow.append(copy.copy(self.get_at((x, y))))
-            new_data.append(tmpRow)
+                tmp_row.append(copy.copy(self.get_at((x, y))))
+            new_data.append(tmp_row)
         return new_data
 
     def image_color_type(self):
-        if self.type == '.raw' or self.type == '.pgm':
+        if self.img_type == '.raw' or self.img_type == '.pgm':
             return 'g'
         return 'rgb'
 
@@ -145,18 +146,105 @@ class ATIImage(object):
     def set_at_band(self, pos, color, band):
         self.data[pos[1]][pos[0]][band] = color
 
+    """
+    
+    Noises
+    
+    """
+    def noise_gaussian(self, percent, mu=0, sigma=1):
+        # Gaussian is Aditive
+        function = ATIRandom.gaussian
+        self.__additive_noise_two_parameters(percent, mu, sigma, function)
+        return
+
+    def __multiplicative_noise_one_parameter(self, percent, func_parameter, function):
+        for x in range(self.width):
+            for y in range(self.height):
+                if ATIRandom.has_to_apply(percent):
+                    variation = function(func_parameter)
+                    new_color = [int(round(self.get_at((x, y))[0] * variation)),
+                                 int(round(self.get_at((x, y))[1] * variation)),
+                                 int(round(self.get_at((x, y))[2] * variation))]
+                    new_color = self.__fix_color(new_color)
+                    self.set_at((x, y), new_color)
+        return
+
+    def __additive_noise_two_parameters(self, percent, func_parameter1, func_parameter2, function):
+        for x in range(self.width):
+            for y in range(self.height):
+                if ATIRandom.has_to_apply(percent):
+                    variation = function(func_parameter1, func_parameter2)
+                    new_color = [ int(round(self.get_at((x, y))[0] + variation)),
+                                  int(round(self.get_at((x, y))[1] + variation)),
+                                  int(round(self.get_at((x, y))[2] + variation))]
+                    new_color = self.__fix_color(new_color)
+                    self.set_at((x, y), new_color)
+        return
+
+    def __fix_color(self, color):
+        if color[0] < 0:
+            color[0] = 0
+        if color[1] < 0:
+            color[1] = 0
+        if color[2] < 0:
+            color[2] = 0
+        if color[0] > 255:
+            color[0] = 255
+        if color[1] > 255:
+            color[1] = 255
+        if color[2] > 255:
+            color[2] = 255
+        return color
+
+    def noise_rayleigh(self, percent, epsilon):
+        # Rayleigh is Multiplicative
+        function = ATIRandom.rayleigh
+        self.__multiplicative_noise_one_parameter(percent, epsilon, function)
+
+    def noise_exponential(self, percent, gamma):
+        # Rayleigh is Multiplicative
+        function = ATIRandom.exponential
+        self.__multiplicative_noise_one_parameter(percent, gamma, function)
+
+    def noise_salt_and_pepper(self, density):
+        # Rayleigh is Multiplicative
+        for x in range(self.width):
+            for y in range(self.height):
+                new_random = ATIRandom.random()
+                if new_random <= density:
+                    self.set_at((x, y), [0, 0, 0])
+                if new_random >= (1 - density):
+                    self.set_at((x, y), [255, 255, 255])
+        return
+
+    """@classmethod
+    def add_image(cls, img1, img2):
+        if img1.width != img2.width or img1.height != img2 != img2.height:
+            raise Exception('Image should be same width and height')
+        image = []
+        for x in range(img1.width):
+            tmp_list = []
+            for y in range(img1.height):
+                tmp_list.append([
+                    img1.get_at((x, y))[0] + img2.get_at((x, y))[0],
+                    img1.get_at((x, y))[1] + img2.get_at((x, y))[1],
+                    img1.get_at((x, y))[2] + img2.get_at((x, y))[2]
+                ])
+            image.append(tmp_list)
+        return cls(image, img1.width, img2.height, img1.type, img1.topLeft)"""
+
+    """
+    
+    Image Operations
+    
+    """
+
     # Add Images
     def add_image(self, image):
         if self.width != image.width or self.height != image.height:
             raise Exception('Image should be same width and height')
         for x in range(self.width):
             for y in range(self.height):
-                color1 = self.get_at((x, y))
-                color2 = image.get_at((x, y))
-                new = [color1[0] + color2[0],
-                       color1[1] + color2[1],
-                       color1[2] + color2[2]]
-
                 self.set_at((x, y), [
                     self.get_at((x, y))[0] + image.get_at((x, y))[0],
                     self.get_at((x, y))[1] + image.get_at((x, y))[1],
@@ -175,22 +263,6 @@ class ATIImage(object):
         if not (0 <= val_min_band <= val_max_band <= 255):
             return True
         return False
-
-    """@classmethod
-    def add_image(cls, img1, img2):
-        if img1.width != img2.width or img1.height != img2 != img2.height:
-            raise Exception('Image should be same width and height')
-        image = []
-        for x in range(img1.width):
-            tmp_list = []
-            for y in range(img1.height):
-                tmp_list.append([
-                    img1.get_at((x, y))[0] + img2.get_at((x, y))[0],
-                    img1.get_at((x, y))[1] + img2.get_at((x, y))[1],
-                    img1.get_at((x, y))[2] + img2.get_at((x, y))[2]
-                ])
-            image.append(tmp_list)
-        return cls(image, img1.width, img2.height, img1.type, img1.topLeft)"""
 
     # Subtract images
     def subtract_image(self, image):
@@ -361,12 +433,12 @@ class ATIImage(object):
         # L = 256
         max_val = self.__get_max_by_band(band)
         # min_val, max_val = self.__get_min_max_by_range(band)
-        l = 256
+        color_deep = 256
 
         for x in range(self.width):
             for y in range(self.height):
                 prev = self.get_at((x, y))[band]
-                new = ((l - 1) * math.log10(1 + prev)) / math.log10(1 + max_val)
+                new = ((color_deep - 1) * math.log10(1 + prev)) / math.log10(1 + max_val)
                 new = int(round(new))
                 self.set_at_band((x, y), new, band)
 
@@ -380,11 +452,11 @@ class ATIImage(object):
         # L = 256
         # Gamma cant be 0, 1 or 2
         # c = (L - 1)^(1 - gamma)
-        l = 256
+        color_deep = 256
         for x in range(self.width):
             for y in range(self.height):
                 prev = self.get_at((x, y))[band]
-                new = math.pow((l - 1), (1 - gamma)) * math.pow(prev, gamma)
+                new = math.pow((color_deep - 1), (1 - gamma)) * math.pow(prev, gamma)
                 new = int(math.floor(new))
                 self.set_at_band((x, y), new, band)
 
@@ -392,7 +464,7 @@ class ATIImage(object):
         raise Exception("Not Implementd method")
 
     def color_array(self):
-        array = [None] * 256
+        array = [0] * 256
         for x in range(self.width):
             for y in range(self.height):
                 array[self.get_at((x, y))] = array[self.get_at((x, y))] + 1
@@ -405,83 +477,83 @@ class ATIImage(object):
                 self.set_at((x, y), (255 - color[0], 255 - color[1], 255 - color[2]))
 
 
-def rgbcolor2hsvcolor(rgbdata):
-    r = rgbdata[0]
-    g = rgbdata[1]
-    b = rgbdata[2]
+def rgb_color_2_hsv_color(rgb_data):
+    r = rgb_data[0]
+    g = rgb_data[1]
+    b = rgb_data[2]
 
-    maxcolor = max(r, g, b)
-    mincolor = min(r, g, b)
+    max_color = max(r, g, b)
+    min_color = min(r, g, b)
 
-    s, v = 0, 0
+    h, s, v = 0, 0, 0
 
-    if maxcolor == mincolor:
+    if max_color == min_color:
         h = "n/a"
 
-    if maxcolor == r:
+    if max_color == r:
         if g >= b:
-            h = round(60 * (g - b) / (maxcolor - mincolor)) % 360
+            h = round(60 * (g - b) / (max_color - min_color)) % 360
         else:
-            h = (round(60 * (g - b) / (maxcolor - mincolor)) + 360) % 360
+            h = (round(60 * (g - b) / (max_color - min_color)) + 360) % 360
 
-    if maxcolor == g:
-        h = (round(60 * (b - r) / (maxcolor - mincolor)) + 120) % 360
-    if maxcolor == b:
-        h = (round(60 * (r - g) / (maxcolor - mincolor)) + 240) % 360
+    if max_color == g:
+        h = (round(60 * (b - r) / (max_color - min_color)) + 120) % 360
+    if max_color == b:
+        h = (round(60 * (r - g) / (max_color - min_color)) + 240) % 360
 
-    if maxcolor == 0:
+    if max_color == 0:
         s = 0
     else:
-        s = 1 - mincolor / maxcolor
+        s = 1 - min_color / max_color
 
-    v = maxcolor
+    v = max_color
     return [h, s, v]
 
 
 def rgb2hsv(image_data, width, height):
-    hsvData = []
+    hsv_data = []
     for y in range(height):
-        tmpList = []
+        tmp_list = []
         for x in range(width):
-            tmpList.append(rgbcolor2hsvcolor(image_data[x][y]))
-        hsvData.append(tmpList)
-    return hsvData
+            tmp_list.append(rgb_color_2_hsv_color(image_data[x][y]))
+        hsv_data.append(tmp_list)
+    return hsv_data
 
 
-def hsvcolor2rgbcolor(hsvdata):
-    h = hsvdata[0]
-    s = hsvdata[1]
-    v = hsvdata[2]
+def hsv_color_2_rgb_color(hsv_data):
+    h = hsv_data[0]
+    s = hsv_data[1]
+    v = hsv_data[2]
 
     if h > 360:
         h = math.fmod(h, 360)
 
-    auxH = math.ceil(h / 60) % 6
-    f = ((math.ceil(h) / 60) % 6) - auxH
+    aux_h = math.ceil(h / 60) % 6
+    f = ((math.ceil(h) / 60) % 6) - aux_h
     p = v * (1 - s)
     q = v * (1 - f * s)
     t = v * (1 - (1 - f) * s)
 
-    if auxH == 0:
+    if aux_h == 0:
         return [v, t, p]
-    if auxH == 1:
+    if aux_h == 1:
         return [q, v, p]
-    if auxH == 2:
+    if aux_h == 2:
         return [p, v, t]
-    if auxH == 3:
+    if aux_h == 3:
         return [p, q, v]
-    if auxH == 4:
+    if aux_h == 4:
         return [t, p, v]
-    if auxH == 5:
+    if aux_h == 5:
         return [v, p, q]
     return "n/a"
 
 
-def hsv2rgb(imageData, width, height):
-    rgbData = []
+def hsv2rgb(image_data, width, height):
+    rgb_data = []
     for y in range(height):
-        tmpList = []
+        tmp_list = []
         for x in range(width):
-            tmpList.append(hsvcolor2rgbcolor(imageData[x][y]))
-        rgbData.append(tmpList)
-    return rgbData
+            tmp_list.append(hsv_color_2_rgb_color(image_data[x][y]))
+        rgb_data.append(tmp_list)
+    return rgb_data
