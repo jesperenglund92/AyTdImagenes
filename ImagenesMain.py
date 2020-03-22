@@ -51,6 +51,7 @@ class Window(Frame):
         edit_menu.add_command(label="Equalize Image", command=self.equalization_window)
         edit_menu.add_command(label="Negative", command=self.make_negative)
         edit_menu.add_command(label="Copy selection", command=copySelection)
+        edit_menu.add_command(label="Add Noise", command=self.open_noise_window)
         menu.add_cascade(label="Edit", menu=edit_menu)
 
         view_menu = Menu(menu)
@@ -225,8 +226,6 @@ class Window(Frame):
             editableImage.gamma_function(gamma)
             pass
 
-
-
     def threshold_window(self):
         window = self._Threshold_window()
 
@@ -277,6 +276,62 @@ class Window(Frame):
             self.window = Tk()
             self.window.focus_set()
             self.window.title("Histogram window")
+
+    def open_noise_window(self):
+        window = self.__Noise_window()
+
+    class __Noise_window():
+        def __init__(self):
+            self.window = Tk()
+            self.window.focus_set()
+            self.window.title("Add Noise")
+
+            Label(self.window, text="Every operation is over the left image").grid(row=0, column= 0)
+
+
+            Label(self.window, text="Add Gaussiang additive Noise").grid(row=2, column=0)
+            mu_var = StringVar()
+            sigma_var = StringVar()
+            
+
+            self.btnAddImage = Button(self.window, text="Add image with original",
+                                      command=self.add_gaussian_noise)
+            self.btnAddImage.grid(row=2, column=1)
+
+            Label(self.window, text="Substract Images").grid(row=3, column=0)
+            self.btnSubstractImage = Button(self.window, text="Editable image substract original",
+                                      command=self.substract_images)
+            self.btnSubstractImage.grid(row=3, column=1)
+
+            Label(self.window, text="Multiply Images").grid(row=4, column=0)
+            self.btnMultiplyImage = Button(self.window, text="Editable image multiply original",
+                                            command=self.multiply_image)
+            self.btnMultiplyImage.grid(row=4, column=1)
+
+            Label(self.window, text="Multiply Image by escalar").grid(row=6, column=0)
+            # Here goes Entry for scalar
+            scalar = StringVar()
+            self.txtScalar = Entry(self.window, textvariable=scalar)
+            self.txtScalar.grid(row=6, column=1)
+
+            self.btnMultiplyImageByScalar = Button(self.window, text="Editable image multiply scalar",
+                                           command=self.multiply_images_scalar)
+            self.btnMultiplyImageByScalar.grid(row=6, column=2)
+
+            Label(self.window, text="Dynamic compression Images").grid(row=8, column=0)
+            self.btnCompressDynamicRange = Button(self.window, text="Compress Image by Dymanic Range",
+                                           command=self.compression_dynamic_range)
+            self.btnCompressDynamicRange.grid(row=8, column=1)
+
+            Label(self.window, text="Gamma correction").grid(row=9, column=0)
+            gamma = StringVar()
+            self.txtGamma = Entry(self.window, textvariable=gamma)
+            self.txtGamma.grid(row=9, column=1)
+            self.btnGammaCorrection = Button(self.window, text="Apply Gamma correction",
+                                                  command=self.gamma_correction)
+            self.btnGammaCorrection.grid(row=9, column=2)
+
+
 
     def loadPpm(self, file):
         global editableImage
