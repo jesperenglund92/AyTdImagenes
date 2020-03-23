@@ -18,7 +18,7 @@ class Window(Frame):
 
         self.screenX = 0
         self.screenY = 0
-
+        self.master.geometry("440x280")
         self.image_loaded = DISABLED
 
         self.file_menu = Menu(self.menu)
@@ -879,10 +879,6 @@ def change_pixel_val(x, y, pixel_color):
     pygame.display.get_surface()
     surface.set_at((edited_x, edited_y), (r, g, b))
 
-    # for obj in objects:
-    #    obj.data[x][y] = (r, g, b)
-    #    draw_ati_image(obj)
-
 
 #
 #   Square & Circle
@@ -999,8 +995,9 @@ def draw_ati_image(image):
     height = image.height
     width = image.width
     pygame.display.get_surface()
-    for x in range(width):
-        for y in range(height):
+
+    for x in range(0, width):
+        for y in range(0, height):
             surface.set_at((x + image.top_left[0], y + image.top_left[1]), image.get_at([x, y]))
 
 
@@ -1198,9 +1195,7 @@ def get_input():
             return True
         elif event.type == MOUSEBUTTONDOWN:
             if event.button == 1:
-
                 print("mousedown")
-
                 mouse_position = pygame.mouse.get_pos()
                 image_click = is_click_in_images(mouse_position)
 
@@ -1215,7 +1210,7 @@ def get_input():
 
                     dragging = True
                     is_selection_active = True
-
+                    print(mouse_position)
                     handle_mouse_input(mouse_position, image_click)
 
                 last_action = "mousedown"
@@ -1228,8 +1223,9 @@ def get_input():
             last_action = "mouseup"
         elif event.type == MOUSEMOTION:
             if dragging:
-                if is_click_in_images(pygame.mouse.get_pos()) == new_selection.image:
-                    new_selection.set_new_pos(pygame.mouse.get_pos())
+                mouse_position = pygame.mouse.get_pos()
+                if is_click_in_images(mouse_position) == new_selection.image:
+                    new_selection.set_new_pos(mouse_position)
                     make_selection(new_selection)
                     update_selection_values(new_selection)
                 else:

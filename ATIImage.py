@@ -97,11 +97,11 @@ class ATIImage(object):
     def get_at_display(self, pos):
         x = pos[0] - self.top_left[0]
         y = pos[1] - self.top_left[1]
-        if not (0 <= x <= self.width):
+        if not (0 <= x < self.width):
             raise Exception("Invalid position")
-        if not (0 <= y <= self.height):
+        if not (0 <= y < self.height):
             raise Exception("Invalid position")
-        return self.get_at((x - 1, y - 1))
+        return self.get_at((x, y))
 
     def __get_band_average_display(self, tl, br, band):
         left = tl[0]
@@ -154,7 +154,7 @@ class ATIImage(object):
 
     def in_display_image(self, pos):
         botton_right = self.get_botton_right()
-        return self.top_left[0] <= pos[0] <= botton_right[0] and self.top_left[1] <= pos[1] <= botton_right[1]
+        return self.top_left[0] <= pos[0] < botton_right[0] and self.top_left[1] <= pos[1] < botton_right[1]
 
     def set_at(self, pos, color):
         self.data[pos[1]][pos[0]] = color
