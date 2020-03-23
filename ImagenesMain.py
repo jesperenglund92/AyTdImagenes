@@ -12,6 +12,7 @@ class Window(Frame):
     def __init__(self, master=None):
         Frame.__init__(self, master)
         self.master = master
+        self.master.focus_set()
 
         self.menu = Menu(self.master)
         self.master.config(menu=self.menu)
@@ -25,7 +26,7 @@ class Window(Frame):
         self.file_submenu = Menu(self.file_menu)
         self.file_submenu.add_command(label="Circle", command=new_white_circle)
         self.file_submenu.add_command(label="Square", command=new_white_square)
-        self.file_submenu.add_command(label="Empty File", state=self.image_loaded)
+        self.file_submenu.add_command(label="White empty image", command=open_new_image_window)
         self.file_menu.add_cascade(label="New File", menu=self.file_submenu)
 
         self.file_menu.add_command(label="Load Image", command=open_file)
@@ -114,6 +115,9 @@ class Window(Frame):
 
         self.blue_pixel_average = Label(master, text="0")
         self.blue_pixel_average.grid(row=10, column=1)
+
+    def set_focus(self):
+        self.master.focus_set()
 
     def exit_program(self):
         self.master.destroy()
@@ -320,90 +324,91 @@ class NoiseWindow:
         self.window.focus_set()
         self.window.title("Add Noise")
 
+        self.window.geometry("1020x220")
         #
         #    Title: Line 0
         #
         Label(self.window, text="Every operation is over the left image").grid(row=0, column=0)
 
         #
-        #    Scale: Line 1 and 2
+        #    Scale: Line 1
         #
 
         Label(self.window, text="Percent of the image: ").grid(row=1, column=0)
         self.sclPercent = Scale(self.window, from_=0, to=1, resolution=0.01, orient=HORIZONTAL, length=200)
-        self.sclPercent.grid(row=2)
+        self.sclPercent.grid(row=1, column=1)
 
         #
-        #   Gaussian Additive Noise Line 3
+        #   Gaussian Additive Noise Line 2
         #   Label, Label Entry, Label Entry, Button
         #   Mu Entry: Float; Sigma Entry: Float
         #
 
-        Label(self.window, text="Gaussian additive Noise; ").grid(row=3, column=0)
+        Label(self.window, text="Gaussian additive Noise; ").grid(row=2, column=0)
         mu_var = StringVar()
         sigma_var = StringVar()
 
-        Label(self.window, text="Mu: ").grid(row=3, column=1)
+        Label(self.window, text="Mu: ").grid(row=2, column=1)
         self.txtMu = Entry(self.window, textvariable=mu_var)
-        self.txtMu.grid(row=3, column=2)
+        self.txtMu.grid(row=2, column=2)
 
-        Label(self.window, text="Sigma: ").grid(row=3, column=3)
+        Label(self.window, text="Sigma: ").grid(row=2, column=3)
         self.txtSigma = Entry(self.window, textvariable=sigma_var)
-        self.txtSigma.grid(row=3, column=4)
+        self.txtSigma.grid(row=2, column=4)
 
         self.btnAddGaussian = Button(self.window, text="Add Gaussian noise",
                                      command=self.add_gaussian_noise)
-        self.btnAddGaussian.grid(row=3, column=5)
+        self.btnAddGaussian.grid(row=2, column=5)
 
         #
-        #   Rayleigh Multiplicative Noise Line 4
+        #   Rayleigh Multiplicative Noise Line 3
         #   Label, Label Entry, Button
         #   Epsilon: float
         #
 
-        Label(self.window, text="Rayleigh multiplicative Noise; ").grid(row=4, column=0)
+        Label(self.window, text="Rayleigh multiplicative Noise; ").grid(row=3, column=0)
         epsilon = StringVar()
 
-        Label(self.window, text="Epsilon: ").grid(row=4, column=1)
+        Label(self.window, text="Epsilon: ").grid(row=3, column=1)
         self.txtEpsilon = Entry(self.window, textvariable=epsilon)
-        self.txtEpsilon.grid(row=4, column=2)
+        self.txtEpsilon.grid(row=3, column=2)
 
         self.btnAddRayleigh = Button(self.window, text="Add Rayleigh noise",
                                      command=self.add_rayleigh_noise)
-        self.btnAddRayleigh.grid(row=4, column=5)
+        self.btnAddRayleigh.grid(row=3, column=5)
 
         #
-        #   Exponential Multiplicative Noise Line 5
+        #   Exponential Multiplicative Noise Line 4
         #   Label, Label Entry, Button
         #   Gamma: float
         #
 
-        Label(self.window, text="Exponential multiplicative Noise; ").grid(row=5, column=0)
+        Label(self.window, text="Exponential multiplicative Noise; ").grid(row=4, column=0)
         gamma = StringVar()
 
-        Label(self.window, text="Gamma: ").grid(row=5, column=1)
+        Label(self.window, text="Gamma: ").grid(row=4, column=1)
         self.txtGamma = Entry(self.window, textvariable=gamma)
-        self.txtGamma.grid(row=5, column=2)
+        self.txtGamma.grid(row=4, column=2)
 
         self.btnAddEpsilon = Button(self.window, text="Add Exponential noise",
                                     command=self.add_exponential_noise)
-        self.btnAddEpsilon.grid(row=5, column=5)
+        self.btnAddEpsilon.grid(row=4, column=5)
 
         #
-        #   Salt & Pepper Noise Line 6
+        #   Salt & Pepper Noise Line 5
         #   Label, Label Scale, Button
         #   Density: float [0, 0.5]
         #
 
-        Label(self.window, text="Salt & Pepper Noise; ").grid(row=6, column=0)
+        Label(self.window, text="Salt & Pepper Noise; ").grid(row=5, column=0)
 
-        Label(self.window, text="Density: ").grid(row=6, column=1)
+        Label(self.window, text="Density: ").grid(row=5, column=1)
         self.sclDensity = Scale(self.window, from_=0, to=0.5, resolution=0.01, orient=HORIZONTAL)
-        self.sclDensity.grid(row=6, column=2)
+        self.sclDensity.grid(row=5, column=2)
 
         self.btnAddSaltPepper = Button(self.window, text="Add Salt & Pepper noise",
                                        command=self.add_salt_pepper_noise)
-        self.btnAddSaltPepper.grid(row=6, column=5)
+        self.btnAddSaltPepper.grid(row=5, column=5)
 
     def add_gaussian_noise(self):
         percent = self.sclPercent.get()
@@ -456,6 +461,7 @@ class NoiseWindow:
 
     def delete_window(self):
         self.window.destroy()
+        app.master.focus_set()
         del self
 
 
@@ -497,7 +503,8 @@ class RawWindow:
 
         self.window = Tk()
         self.window.focus_set()
-
+        self.window.title("Load Raw file")
+        self.window.geometry("280x140")
         self.file = file
         self.font = font.Font(weight="bold")
 
@@ -535,6 +542,7 @@ class RawWindow:
 
         app.enable_image_menu()
         self.window.destroy()
+        app.master.focus_set()
 
         editableImage.height = height
         editableImage.width = width
@@ -735,7 +743,7 @@ class OperationsWindow:
         self.window = Tk()
         self.window.focus_set()
         self.window.title("Operations")
-
+        self.window.geometry("800x230")
         Label(self.window, text="Every operation is over the left image and his original").grid(row=0, column=0)
 
         Label(self.window, text="Adding Images").grid(row=2, column=0)
@@ -834,6 +842,7 @@ class ThresholdWindow:
         self.window = Tk()
         self.window.focus_set()
         self.window.title("Threshold Image")
+        self.window.geometry("340x60")
         Label(self.window, text="Threshold: ").grid(row=0, column=0)
 
         self.threshold = StringVar()
@@ -852,6 +861,11 @@ class ThresholdWindow:
 
         editableImage.threshold_function(threshold)
         draw_ati_image(editableImage)
+        self.close_window()
+
+    def close_window(self):
+        self.window.destroy()
+        app.focus_set()
 
 
 #
@@ -883,64 +897,210 @@ def change_pixel_val(x, y, pixel_color):
 #
 #   Square & Circle
 #
+def open_new_image_window():
+    NewImageWindow()
+
+
+class NewImageWindow:
+    def __init__(self):
+        self.window = Tk()
+        self.window.focus_set()
+        self.window.title("New Image")
+
+        self.window.geometry("380x160")
+
+        self.font = font.Font(weight="bold")
+        Label(self.window, text="Select image size", font=self.font).grid(row=0)
+
+        Label(self.window, text="Width (px): ").grid(row=1, column=0)
+        self.sclWidth = Scale(self.window, from_=1, to=720, resolution=16, orient=HORIZONTAL, length=250)
+        self.sclWidth.grid(row=1, column=1)
+
+        Label(self.window, text="Height (px): ").grid(row=2, column=0)
+        self.sclHeight = Scale(self.window, from_=1, to=720, resolution=16, orient=HORIZONTAL, length=250)
+        self.sclHeight.grid(row=2, column=1)
+
+        self.btnCancel = Button(self.window, text="Cancel", command=self.close_window)
+        self.btnCancel.grid(row=4, column=0)
+        self.btnCreateFile = Button(self.window, text="Create Image", command=self.create_new_empty_image)
+        self.btnCreateFile.grid(row=4, column=1)
+
+    def close_window(self):
+        self.window.destroy()
+        app.master.focus_set()
+
+    def create_new_empty_image(self):
+        global editableImage, originalImage
+        width = self.sclWidth.get()
+        height = self.sclHeight.get()
+
+        data = []
+        for y in range(height):
+            row = []
+            for x in range(width):
+                row.append([255, 255, 255])
+            data.append(row)
+
+        image = ATIImage()
+        image.data = data
+        image.width = width
+        image.height = height
+        image.magic_num = 'P6'
+        image.max_gray_level = 255
+        editableImage = image
+        originalImage = editableImage.get_copy()
+        app.enable_image_menu()
+        draw_images()
+        self.close_window()
+
+
+class NewWhiteCircle:
+    def __init__(self):
+        self.window = Tk()
+        self.window.focus_set()
+        self.window.title("New Circle")
+
+        self.window.geometry("460x280")
+        Label(self.window, text="Select size of image and circle").grid(row=0, column=0)
+
+        Label(self.window, text="Width (px): ").grid(row=1, column=0)
+        self.sclWidth = Scale(self.window, from_=1, to=200, resolution=8, orient=HORIZONTAL, length=250)
+        self.sclWidth.grid(row=1, column=1)
+
+        Label(self.window, text="Height (px): ").grid(row=2, column=0)
+        self.sclHeight = Scale(self.window, from_=1, to=200, resolution=8, orient=HORIZONTAL, length=250)
+        self.sclHeight.grid(row=2, column=1)
+
+        Label(self.window, text="Radius (px): ").grid(row=3, column=0)
+        self.sclRadius = Scale(self.window, from_=0, to=200,
+                               orient=HORIZONTAL, length=250)
+        self.sclRadius.grid(row=3, column=1)
+
+        Label(self.window, text="Center x(px): ").grid(row=4, column=0)
+        self.sclCenterX = Scale(self.window, from_=0, to=200, orient=HORIZONTAL, length=250)
+        self.sclCenterX.grid(row=4, column=1)
+
+        Label(self.window, text="Center y(px): ").grid(row=5, column=0)
+        self.sclCenterY = Scale(self.window, from_=0, to=200, orient=HORIZONTAL, length=250)
+        self.sclCenterY.grid(row=5, column=1)
+
+        self.btnCancel = Button(self.window, text="Cancel", command=self.close_window)
+        self.btnCancel.grid(row=6, column=0)
+        self.btnCreateFile = Button(self.window, text="Create Image", command=self.create_new_circle_image)
+        self.btnCreateFile.grid(row=6, column=1)
+
+    def close_window(self):
+        self.window.destroy()
+        app.master.focus_set()
+
+    def create_new_circle_image(self):
+        global editableImage
+        global originalImage
+
+        data = []
+        radius = self.sclRadius.get()
+        center = [self.sclCenterX.get(), self.sclCenterY.get()]
+        top_left = [20, 20]
+        width = self.sclWidth.get()
+        height = self.sclHeight.get()
+
+        for y in range(height):
+            row = []
+            for x in range(width):
+                if math.sqrt((x - center[0]) ** 2 + (y - center[1]) ** 2) <= radius:
+                    row.append([0, 0, 0])
+                else:
+                    row.append([255, 255, 255])
+            data.append(row)
+
+        image = ATIImage(data=data, width=width, height=height, image_type='.ppm',
+                         active=True, editable=True, top_left=top_left)
+        image.max_gray_level = 255
+        image.magic_num = 'P6'
+        editableImage = image
+        originalImage = image.get_copy()
+        originalImage.set_top_left((image.top_left[0] + image.width, 20))
+        draw_images()
+        app.enable_image_menu()
+        self.close_window()
+
 
 def new_white_circle():
-    global editableImage
-    global originalImage
-
-    data = []
-    radius = 50
-    center = [100, 100]
-    top_left = [20, 20]
-    width = 200
-    height = 200
-
-    for y in range(height):
-        row = []
-        for x in range(width):
-            if math.sqrt((x - center[0]) ** 2 + (y - center[1]) ** 2) <= radius:
-                row.append((0, 0, 0))
-            else:
-                row.append((255, 255, 255))
-        data.append(row)
-
-    image = ATIImage(data=data, width=width, height=height, image_type='.ppm',
-                     active=True, editable=True, top_left=top_left)
-    image.max_gray_level = 255
-    image.magic_num = 'P6'
-    editableImage = image
-    originalImage = image.get_copy()
-    originalImage.set_top_left((image.top_left[0] + image.width, 20))
-    draw_images()
+    NewWhiteCircle()
 
 
 def new_white_square():
-    global editableImage
-    global originalImage
-    data = []
-    height = 200
-    width = 200
-    top_left = [20, 20]
-    radius = 50
-    center = [100, 100]
+    NewWhiteSquare()
 
-    for y in range(height):
-        row = []
-        for x in range(width):
-            if abs(x - center[0]) <= radius and abs(y - center[1]) <= radius:
-                row.append((0, 0, 0))
-            else:
-                row.append((255, 255, 255))
-        data.append(row)
 
-    image = ATIImage(data=data, width=width, height=height, image_type='.ppm', active=True,
-                     editable=True, top_left=top_left)
-    image.max_gray_level = 255
-    image.magic_num = 'P6'
-    editableImage = image
-    originalImage = image.get_copy()
-    originalImage.set_top_left((image.top_left[0] + image.width, 20))
-    draw_images()
+class NewWhiteSquare:
+    def __init__(self):
+        self.window = Tk()
+        self.window.focus_set()
+        self.window.title("New Square")
+
+        self.window.geometry("460x280")
+        Label(self.window, text="Select size of image and circle").grid(row=0, column=0)
+
+        Label(self.window, text="Width (px): ").grid(row=1, column=0)
+        self.sclWidth = Scale(self.window, from_=1, to=200, resolution=8, orient=HORIZONTAL, length=250)
+        self.sclWidth.grid(row=1, column=1)
+
+        Label(self.window, text="Height (px): ").grid(row=2, column=0)
+        self.sclHeight = Scale(self.window, from_=1, to=200, resolution=8, orient=HORIZONTAL, length=250)
+        self.sclHeight.grid(row=2, column=1)
+
+        Label(self.window, text="Radius (px): ").grid(row=3, column=0)
+        self.sclRadius = Scale(self.window, from_=0, to=200,
+                               orient=HORIZONTAL, length=250)
+        self.sclRadius.grid(row=3, column=1)
+
+        Label(self.window, text="Center x(px): ").grid(row=4, column=0)
+        self.sclCenterX = Scale(self.window, from_=0, to=200, orient=HORIZONTAL, length=250)
+        self.sclCenterX.grid(row=4, column=1)
+
+        Label(self.window, text="Center y(px): ").grid(row=5, column=0)
+        self.sclCenterY = Scale(self.window, from_=0, to=200, orient=HORIZONTAL, length=250)
+        self.sclCenterY.grid(row=5, column=1)
+
+        self.btnCancel = Button(self.window, text="Cancel", command=self.close_window)
+        self.btnCancel.grid(row=6, column=0)
+        self.btnCreateFile = Button(self.window, text="Create Image", command=self.create_new_square_image)
+        self.btnCreateFile.grid(row=6, column=1)
+
+    def close_window(self):
+        self.window.destroy()
+        app.master.focus_set()
+
+    def create_new_square_image(self):
+        global editableImage
+        global originalImage
+        data = []
+        height = self.sclHeight.get()
+        width = self.sclWidth.get()
+        top_left = [20, 20]
+        radius = self.sclRadius.get()
+        center = [self.sclCenterX.get(), self.sclCenterY.get()]
+
+        for y in range(height):
+            row = []
+            for x in range(width):
+                if abs(x - center[0]) <= radius and abs(y - center[1]) <= radius:
+                    row.append((0, 0, 0))
+                else:
+                    row.append((255, 255, 255))
+            data.append(row)
+
+        image = ATIImage(data=data, width=width, height=height, image_type='.ppm', active=True,
+                         editable=True, top_left=top_left)
+        image.max_gray_level = 255
+        image.magic_num = 'P6'
+        editableImage = image
+        originalImage = image.get_copy()
+        originalImage.set_top_left((image.top_left[0] + image.width, 20))
+        draw_images()
+        app.enable_image_menu()
+        self.close_window()
 
 
 #
@@ -1195,7 +1355,7 @@ def get_input():
             return True
         elif event.type == MOUSEBUTTONDOWN:
             if event.button == 1:
-                print("mousedown")
+                # print("mousedown")
                 mouse_position = pygame.mouse.get_pos()
                 image_click = is_click_in_images(mouse_position)
 
@@ -1210,7 +1370,6 @@ def get_input():
 
                     dragging = True
                     is_selection_active = True
-                    print(mouse_position)
                     handle_mouse_input(mouse_position, image_click)
 
                 last_action = "mousedown"
