@@ -3,6 +3,9 @@ import pygame
 from pygame.locals import *
 from ATIImage import *
 from classes import *
+import math
+import numpy as np
+import matplotlib.pyplot as plt
 
 
 class Window(Frame):
@@ -32,17 +35,18 @@ class Window(Frame):
 
         self.edit_menu = Menu(self.menu)
         self.edit_menu.add_command(label="Copy", command=self.copy_window)
-        self.edit_menu.add_command(label="Operations", command=self.operations_window)
+        self.edit_menu.add_command(label="Operations", command=operations_window)
         self.edit_menu.add_command(label="Threshold Image", command=self.threshold_window)
         self.edit_menu.add_command(label="Equalize Image", command=self.equalization_window)
         self.edit_menu.add_command(label="Negative", command=make_negative)
         self.edit_menu.add_command(label="Copy selection", command=copy_selection)
-        self.edit_menu.add_command(label="Add Noise", command=self.open_noise_window)
+        self.edit_menu.add_command(label="Add Noise", command=open_noise_window)
         self.menu.add_cascade(label="Edit", menu=self.edit_menu)
 
         self.view_menu = Menu(self.menu)
         self.view_menu.add_command(label="HSV Color")
-        self.view_menu.add_command(label="Histogram", command=self.histogram_window)
+        self.view_menu.add_command(label="Histogram", command=histogram_window)
+        self.view_menu.add_command(label="Equalize", command=equalize_histogram)
         self.menu.add_cascade(label="View", menu=self.view_menu)
 
         self.disable_image_menu()
@@ -96,7 +100,6 @@ class Window(Frame):
         pass
 
     def __emit_image_menu_action(self, state):
-
         self.edit_menu.entryconfigure(0, state=state)
         self.edit_menu.entryconfigure(1, state=state)
         self.edit_menu.entryconfigure(2, state=state)
@@ -124,19 +127,6 @@ class Window(Frame):
         self.valueEntry.delete(0, END)
         self.valueEntry.insert(0, value)
 
-    """def display_pixel_val(self, x, y, value, screen_x, screen_y):
-        self.xLabel['text'] = x
-        self.yLabel['text'] = y
-        self.valueEntry.delete(0, END)
-        self.valueEntry.insert(0, value)
-        self.screenX = screen_x
-        self.screenY = screen_y
-    """
-
-    def display_gray_pixel_amount(self, amount, gray_avg):
-        self.pixel_amount['text'] = amount
-        self.gray_avg['text'] = gray_avg
-
     def copy_window(self):
         self.__CopyWindow()
 
@@ -145,70 +135,6 @@ class Window(Frame):
             self.window = Tk()
             self.window.focus_set()
             self.window.title("Copy Image")
-            pass
-
-    def operations_window(self):
-        self.__OperationsWindow()
-
-    class __OperationsWindow:
-        def __init__(self):
-            self.window = Tk()
-            self.window.focus_set()
-            self.window.title("Operations")
-
-            Label(self.window, text="Every operation is over the left image and his original").grid(row=0, column=0)
-
-            Label(self.window, text="Adding Images").grid(row=2, column=0)
-            self.btnAddImage = Button(self.window, text="Add image with original",
-                                      command=add_images)
-            self.btnAddImage.grid(row=2, column=1)
-
-            Label(self.window, text="Subtract Images").grid(row=3, column=0)
-            self.btnSubtractImage = Button(self.window, text="Editable image subtract original",
-                                           command=subtract_images)
-            self.btnSubtractImage.grid(row=3, column=1)
-
-            Label(self.window, text="Multiply Images").grid(row=4, column=0)
-            self.btnMultiplyImage = Button(self.window, text="Editable image multiply original",
-                                           command=multiply_image)
-            self.btnMultiplyImage.grid(row=4, column=1)
-
-            Label(self.window, text="Multiply Image by scalar").grid(row=6, column=0)
-            # Here goes Entry for scalar
-            scalar = StringVar()
-            self.txtScalar = Entry(self.window, textvariable=scalar)
-            self.txtScalar.grid(row=6, column=1)
-
-            self.btnMultiplyImageByScalar = Button(self.window, text="Editable image multiply scalar",
-                                                   command=self.multiply_images_scalar)
-            self.btnMultiplyImageByScalar.grid(row=6, column=2)
-
-            Label(self.window, text="Dynamic compression Images").grid(row=8, column=0)
-            self.btnCompressDynamicRange = Button(self.window, text="Compress Image by Dynamic Range",
-                                                  command=compression_dynamic_range)
-            self.btnCompressDynamicRange.grid(row=8, column=1)
-
-            Label(self.window, text="Gamma correction").grid(row=9, column=0)
-            gamma = StringVar()
-            self.txtGamma = Entry(self.window, textvariable=gamma)
-            self.txtGamma.grid(row=9, column=1)
-            self.btnGammaCorrection = Button(self.window, text="Apply Gamma correction",
-                                             command=self.gamma_correction)
-            self.btnGammaCorrection.grid(row=9, column=2)
-
-            pass
-
-        def multiply_images_scalar(self):
-            scalar = int(self.txtScalar.get())
-            editableImage.scalar_product(scalar)
-            draw_ati_image(editableImage)
-            return
-
-        def gamma_correction(self):
-            gamma = float(self.txtGamma.get())
-            if gamma <= 0 or gamma == 1 or gamma >= 2:
-                raise Exception("Invalid Gamma")
-            editableImage.gamma_function(gamma)
             pass
 
     def threshold_window(self):
@@ -247,196 +173,158 @@ class Window(Frame):
             self.window.focus_set()
             self.window.title("Threshold Image")
 
-    def histogram_window(self):
-        """Following libraries needed:
-        import matplotlib.pyplot as plt
-        import math"""
-        yvals, xvals = self.get_histogram(editableImage.data, 1, 0)  # or get editableimage in a more dynamic way
-        plt.figure(figsize=[10, 8])
-        plt.bar(xvals, yvals, width=5, color='#0504aa', alpha=0.7)
-        # plt.xlim(0, max(xvals))
-        plt.grid(axis='y', alpha=0.75)
-        plt.xlabel('Value', fontsize=10)
-        plt.ylabel('Frequency', fontsize=10)
-        plt.xticks(fontsize=10)
-        plt.yticks(fontsize=10)
-        plt.ylabel('Frequency', fontsize=15)
-        plt.title('Histogram', fontsize=15)
-        plt.show()
-        # window = self.__HistogramWindow()
 
-    def get_histogram(self, imgdata, step, band):
-        xpoints = []
-        ypoints = []
-        steps = int(round(255 / step))
-        xpoint = 0
-        #for i in range(256):
-        #    xpoints.append(i)
-        #ypoints = editableImage.color_array(0)
-        #return ypoints, xpoints
+#
+#   Noise
+#
 
-        for i in range(steps + 1):
-            ypoints.append(0)
-            xpoints.append(xpoint)
-            xpoint += step
-        for row in imgdata:
-            for col in row:
-                ypoints[int(math.trunc(col[band] / step))] += 1
-        return ypoints, xpoints
+def open_noise_window():
+    NoiseWindow()
 
 
-    class __HistogramWindow():
-        def __init__(self):
-            self.window = Tk()
-            self.window.focus_set()
-            self.window.title("Histogram window")
+class NoiseWindow:
+    def __init__(self):
+        self.window = Tk()
+        self.window.focus_set()
+        self.window.title("Add Noise")
 
-    def open_noise_window(self):
-        self.__NoiseWindow()
+        #
+        #    Title: Line 0
+        #
+        Label(self.window, text="Every operation is over the left image").grid(row=0, column=0)
 
-    class __NoiseWindow:
-        def __init__(self):
-            self.window = Tk()
-            self.window.focus_set()
-            self.window.title("Add Noise")
+        #
+        #    Scale: Line 1 and 2
+        #
 
-            #
-            #    Title: Line 0
-            #
-            Label(self.window, text="Every operation is over the left image").grid(row=0, column=0)
+        Label(self.window, text="Percent of the image: ").grid(row=1, column=0)
+        self.sclPercent = Scale(self.window, from_=0, to=1, resolution=0.01, orient=HORIZONTAL, length=200)
+        self.sclPercent.grid(row=2)
 
-            #
-            #    Scale: Line 1 and 2
-            #
+        #
+        #   Gaussian Additive Noise Line 3
+        #   Label, Label Entry, Label Entry, Button
+        #   Mu Entry: Float; Sigma Entry: Float
+        #
 
-            Label(self.window, text="Percent of the image: ").grid(row=1, column=0)
-            self.sclPercent = Scale(self.window, from_=0, to=1, resolution=0.01, orient=HORIZONTAL, length=200)
-            self.sclPercent.grid(row=2)
+        Label(self.window, text="Gaussian additive Noise; ").grid(row=3, column=0)
+        mu_var = StringVar()
+        sigma_var = StringVar()
 
-            #
-            #   Gaussian Additive Noise Line 3
-            #   Label, Label Entry, Label Entry, Button
-            #   Mu Entry: Float; Sigma Entry: Float
-            #
+        Label(self.window, text="Mu: ").grid(row=3, column=1)
+        self.txtMu = Entry(self.window, textvariable=mu_var)
+        self.txtMu.grid(row=3, column=2)
 
-            Label(self.window, text="Gaussian additive Noise; ").grid(row=3, column=0)
-            mu_var = StringVar()
-            sigma_var = StringVar()
+        Label(self.window, text="Sigma: ").grid(row=3, column=3)
+        self.txtSigma = Entry(self.window, textvariable=sigma_var)
+        self.txtSigma.grid(row=3, column=4)
 
-            Label(self.window, text="Mu: ").grid(row=3, column=1)
-            self.txtMu = Entry(self.window, textvariable=mu_var)
-            self.txtMu.grid(row=3, column=2)
+        self.btnAddGaussian = Button(self.window, text="Add Gaussian noise",
+                                     command=self.add_gaussian_noise)
+        self.btnAddGaussian.grid(row=3, column=5)
 
-            Label(self.window, text="Sigma: ").grid(row=3, column=3)
-            self.txtSigma = Entry(self.window, textvariable=sigma_var)
-            self.txtSigma.grid(row=3, column=4)
+        #
+        #   Rayleigh Multiplicative Noise Line 4
+        #   Label, Label Entry, Button
+        #   Epsilon: float
+        #
 
-            self.btnAddGaussian = Button(self.window, text="Add Gaussian noise",
-                                         command=self.add_gaussian_noise)
-            self.btnAddGaussian.grid(row=3, column=5)
+        Label(self.window, text="Rayleigh multiplicative Noise; ").grid(row=4, column=0)
+        epsilon = StringVar()
 
-            #
-            #   Rayleigh Multiplicative Noise Line 4
-            #   Label, Label Entry, Button
-            #   Epsilon: float
-            #
+        Label(self.window, text="Epsilon: ").grid(row=4, column=1)
+        self.txtEpsilon = Entry(self.window, textvariable=epsilon)
+        self.txtEpsilon.grid(row=4, column=2)
 
-            Label(self.window, text="Rayleigh multiplicative Noise; ").grid(row=4, column=0)
-            epsilon = StringVar()
+        self.btnAddRayleigh = Button(self.window, text="Add Rayleigh noise",
+                                     command=self.add_rayleigh_noise)
+        self.btnAddRayleigh.grid(row=4, column=5)
 
-            Label(self.window, text="Epsilon: ").grid(row=4, column=1)
-            self.txtEpsilon = Entry(self.window, textvariable=epsilon)
-            self.txtEpsilon.grid(row=4, column=2)
+        #
+        #   Exponential Multiplicative Noise Line 5
+        #   Label, Label Entry, Button
+        #   Gamma: float
+        #
 
-            self.btnAddRayleigh = Button(self.window, text="Add Rayleigh noise",
-                                         command=self.add_rayleigh_noise)
-            self.btnAddRayleigh.grid(row=4, column=5)
+        Label(self.window, text="Exponential multiplicative Noise; ").grid(row=5, column=0)
+        gamma = StringVar()
 
-            #
-            #   Exponential Multiplicative Noise Line 5
-            #   Label, Label Entry, Button
-            #   Gamma: float
-            #
+        Label(self.window, text="Gamma: ").grid(row=5, column=1)
+        self.txtGamma = Entry(self.window, textvariable=gamma)
+        self.txtGamma.grid(row=5, column=2)
 
-            Label(self.window, text="Exponential multiplicative Noise; ").grid(row=5, column=0)
-            gamma = StringVar()
+        self.btnAddEpsilon = Button(self.window, text="Add Exponential noise",
+                                    command=self.add_exponential_noise)
+        self.btnAddEpsilon.grid(row=5, column=5)
 
-            Label(self.window, text="Gamma: ").grid(row=5, column=1)
-            self.txtGamma = Entry(self.window, textvariable=gamma)
-            self.txtGamma.grid(row=5, column=2)
+        #
+        #   Salt & Pepper Noise Line 6
+        #   Label, Label Scale, Button
+        #   Density: float [0, 0.5]
+        #
 
-            self.btnAddEpsilon = Button(self.window, text="Add Exponential noise",
-                                        command=self.add_exponential_noise)
-            self.btnAddEpsilon.grid(row=5, column=5)
+        Label(self.window, text="Salt & Pepper Noise; ").grid(row=6, column=0)
 
-            #
-            #   Salt & Pepper Noise Line 6
-            #   Label, Label Scale, Button
-            #   Density: float [0, 0.5]
-            #
+        Label(self.window, text="Density: ").grid(row=6, column=1)
+        self.sclDensity = Scale(self.window, from_=0, to=0.5, resolution=0.01, orient=HORIZONTAL)
+        self.sclDensity.grid(row=6, column=2)
 
-            Label(self.window, text="Salt & Pepper Noise; ").grid(row=6, column=0)
+        self.btnAddSaltPepper = Button(self.window, text="Add Salt & Pepper noise",
+                                       command=self.add_salt_pepper_noise)
+        self.btnAddSaltPepper.grid(row=6, column=5)
 
-            Label(self.window, text="Density: ").grid(row=6, column=1)
-            self.sclDensity = Scale(self.window, from_=0, to=0.5, resolution=0.01, orient=HORIZONTAL)
-            self.sclDensity.grid(row=6, column=2)
+    def add_gaussian_noise(self):
+        percent = self.sclPercent.get()
+        mu = self.txtMu.get()
+        if mu == '':
+            mu = float(0)
+        sigma = self.txtSigma.get()
+        if sigma == '':
+            sigma = float(1)
+        image_id = 0
+        image = get_image_by_id(image_id)
+        image.noise_gaussian(percent=percent, mu=mu, sigma=sigma)
+        draw_ati_image(image)
+        self.delete_window()
 
-            self.btnAddSaltPepper = Button(self.window, text="Add Salt & Pepper noise",
-                                           command=self.add_salt_pepper_noise)
-            self.btnAddSaltPepper.grid(row=6, column=5)
+    def add_rayleigh_noise(self):
+        percent = self.sclPercent.get()
+        epsilon = self.txtEpsilon.get()
+        image_id = 0
+        image = get_image_by_id(image_id)
+        if epsilon == '':
+            raise Exception("Epsilon not set")
+        image.noise_rayleigh(percent, epsilon)
+        draw_ati_image(image)
+        self.delete_window()
 
-        def add_gaussian_noise(self):
-            percent = self.sclPercent.get()
-            mu = self.txtMu.get()
-            if mu == '':
-                mu = float(0)
-            sigma = self.txtSigma.get()
-            if sigma == '':
-                sigma = float(1)
-            image_id = 0
-            image = get_image_by_id(image_id)
-            image.noise_gaussian(percent=percent, mu=mu, sigma=sigma)
-            draw_ati_image(image)
-            self.delete_window()
+    def add_exponential_noise(self):
+        percent = self.sclPercent.get()
+        gamma = self.txtGamma.get()
+        image_id = 0
+        image = get_image_by_id(image_id)
+        if gamma == '':
+            raise Exception("Gamma not set")
+        image.noise_exponential(percent, gamma)
+        draw_ati_image(image)
+        self.delete_window()
 
-        def add_rayleigh_noise(self):
-            percent = self.sclPercent.get()
-            epsilon = self.txtEpsilon.get()
-            image_id = 0
-            image = get_image_by_id(image_id)
-            if epsilon == '':
-                raise Exception("Epsilon not set")
-            image.noise_rayleigh(percent, epsilon)
-            draw_ati_image(image)
-            self.delete_window()
+    def add_salt_pepper_noise(self):
+        density = self.sclDensity.get()
+        if density == '':
+            raise Exception('Density is not set')
+        density = float(density)
+        if density > 0.5:
+            raise Exception('Wrong Density value. Should be lower than 0.5')
+        image_id = 0
+        image = get_image_by_id(image_id)
+        image.noise_salt_and_pepper(density)
+        draw_ati_image(image)
+        self.delete_window()
 
-        def add_exponential_noise(self):
-            percent = self.sclPercent.get()
-            gamma = self.txtGamma.get()
-            image_id = 0
-            image = get_image_by_id(image_id)
-            if gamma == '':
-                raise Exception("Gamma not set")
-            image.noise_exponential(percent, gamma)
-            draw_ati_image(image)
-            self.delete_window()
-
-        def add_salt_pepper_noise(self):
-            density = self.sclDensity.get()
-            if density == '':
-                raise Exception('Density is not set')
-            density = float(density)
-            if density > 0.5:
-                raise Exception('Wrong Density value. Should be lower than 0.5')
-            image_id = 0
-            image = get_image_by_id(image_id)
-            image.noise_salt_and_pepper(density)
-            draw_ati_image(image)
-            self.delete_window()
-
-        def delete_window(self):
-            self.window.destroy()
-            del self
+    def delete_window(self):
+        self.window.destroy()
+        del self
 
 
 #
@@ -524,9 +412,10 @@ class RawWindow:
         draw_images()
         file.close()
 
-        #originalImage.data = image
-        #originalImage.width = width
-        #originalImage.height = height
+        # originalImage.data = image
+        # originalImage.width = width
+        # originalImage.height = height
+
 
 def load_pgm(file):
     global editableImage
@@ -704,6 +593,72 @@ def write_ppm_pgm_headers(file, image):
 #
 #   Operations with images
 #
+
+def operations_window():
+    OperationsWindow()
+
+
+class OperationsWindow:
+    def __init__(self):
+        self.window = Tk()
+        self.window.focus_set()
+        self.window.title("Operations")
+
+        Label(self.window, text="Every operation is over the left image and his original").grid(row=0, column=0)
+
+        Label(self.window, text="Adding Images").grid(row=2, column=0)
+        self.btnAddImage = Button(self.window, text="Add image with original",
+                                  command=add_images)
+        self.btnAddImage.grid(row=2, column=1)
+
+        Label(self.window, text="Subtract Images").grid(row=3, column=0)
+        self.btnSubtractImage = Button(self.window, text="Editable image subtract original",
+                                       command=subtract_images)
+        self.btnSubtractImage.grid(row=3, column=1)
+
+        Label(self.window, text="Multiply Images").grid(row=4, column=0)
+        self.btnMultiplyImage = Button(self.window, text="Editable image multiply original",
+                                       command=multiply_image)
+        self.btnMultiplyImage.grid(row=4, column=1)
+
+        Label(self.window, text="Multiply Image by scalar").grid(row=6, column=0)
+        # Here goes Entry for scalar
+        scalar = StringVar()
+        self.txtScalar = Entry(self.window, textvariable=scalar)
+        self.txtScalar.grid(row=6, column=1)
+
+        self.btnMultiplyImageByScalar = Button(self.window, text="Editable image multiply scalar",
+                                               command=self.multiply_images_scalar)
+        self.btnMultiplyImageByScalar.grid(row=6, column=2)
+
+        Label(self.window, text="Dynamic compression Images").grid(row=8, column=0)
+        self.btnCompressDynamicRange = Button(self.window, text="Compress Image by Dynamic Range",
+                                              command=compression_dynamic_range)
+        self.btnCompressDynamicRange.grid(row=8, column=1)
+
+        Label(self.window, text="Gamma correction").grid(row=9, column=0)
+        gamma = StringVar()
+        self.txtGamma = Entry(self.window, textvariable=gamma)
+        self.txtGamma.grid(row=9, column=1)
+        self.btnGammaCorrection = Button(self.window, text="Apply Gamma correction",
+                                         command=self.gamma_correction)
+        self.btnGammaCorrection.grid(row=9, column=2)
+
+        pass
+
+    def multiply_images_scalar(self):
+        scalar = int(self.txtScalar.get())
+        editableImage.scalar_product(scalar)
+        draw_ati_image(editableImage)
+        return
+
+    def gamma_correction(self):
+        gamma = float(self.txtGamma.get())
+        if gamma <= 0 or gamma == 1 or gamma >= 2:
+            raise Exception("Invalid Gamma")
+        editableImage.gamma_function(gamma)
+        pass
+
 
 def add_images(image_id_1=0, image_id_2=1):
     image_1 = get_image_by_id(image_id_1)
@@ -890,20 +845,78 @@ def draw_images():
     originalImage.top_left = [40 + originalImage.width, 20]
     editableImage.active = True
     originalImage.active = False
-    pygame.display.get_surface()
+    pygame.display.set_mode((60 + editableImage.width * 2, 40 + editableImage.height))
     surface.fill((0, 0, 0))
 
-    pygame.display.set_mode((60 + editableImage.width * 2, 40 + editableImage.height))
     draw_ati_image(editableImage)
     draw_ati_image(originalImage)
 
-    """
-    f = filedialog.asksaveasfile(mode='w', defaultextension=".raw")
-    if f:
-        with open('blue_red_example.ppm', 'wb') as f:
-            f.write(bytearray(ppm_header, 'ascii'))
-            image.tofile(f)
-    f.close()"""
+
+#
+#   View
+#
+
+def histogram_window():
+    """Following libraries needed:
+    import matplotlib.pyplot as plt
+    import math"""
+    y_vals, x_vals = get_histogram(editableImage.data, 1, 0)  # or get editableimage in a more dynamic way
+    plt.figure(figsize=[10, 8])
+    plt.bar(x_vals, y_vals, width=5, color='#0504aa', alpha=0.7)
+
+    plt.grid(axis='y', alpha=0.75)
+    plt.xlabel('Value', fontsize=10)
+    plt.ylabel('Frequency', fontsize=10)
+    plt.xticks(fontsize=10)
+    plt.yticks(fontsize=10)
+    plt.ylabel('Frequency', fontsize=15)
+    plt.title('Histogram', fontsize=15)
+    plt.show()
+
+
+def get_histogram(img_data, step, band):
+    x_points = []
+    y_points = []
+    steps = int(round(255 / step))
+    x_point = 0
+
+    for i in range(steps + 1):
+        y_points.append(0)
+        x_points.append(x_point)
+        x_point += step
+    for row in img_data:
+        for col in row:
+            y_points[int(math.trunc(col[band] / step))] += 1
+    return y_points, x_points
+
+
+def equalize_histogram(self):
+    y_vals, x_vals = get_histogram(editableImage.data, 1, 0)
+    cs = cum_sum(y_vals)
+    cs = normalize(cs)
+    img = np.asarray(editableImage.data)
+    flat = img.flatten()
+    img_new = cs[flat]
+    img_new = np.reshape(img_new, img.shape)
+    editableImage.data = img_new
+    draw_ati_image(editableImage)
+
+
+def cum_sum(hist):
+    hist = iter(hist)
+    cum_array = [next(hist)]
+    for i in hist:
+        cum_array.append(cum_array[-1] + i)
+    return np.array(cum_array)
+
+
+def normalize(cs):
+    n = (cs - cs.min())
+    N = cs.max() - cs.min()
+    cs = (n / N) * 255
+    cs = np.rint(cs)
+    cs = cs.astype(int)
+    return cs
 
 
 #
@@ -919,7 +932,6 @@ def get_image_by_id(image_id):
 
 
 def is_click_in_images(pos):
-    # Tengo posiciones de Top Left y botton rigth. Puedo consultar con cualquier imagen
     if editableImage.in_display_image(pos):
         return 0
     if originalImage.in_display_image(pos):
@@ -994,28 +1006,6 @@ def copy_selection():
                 image = ATIImage(data, len(data[0]), len(data), "type", (300, 50), True, True)
                 images.append(image)
                 draw_ati_image(image)
-
-
-"""
-def rgb_to_gray_scale(pixel_col):
-    return pixel_col[0] * 0.3 + pixel_col[1] * 0.59 + pixel_col[2] * 0.11
-"""
-
-"""
-def get_gray_pixel_amount(img):
-    if img.values_set:
-        data = img_data_in_selection(img)
-        if len(data) > 0:
-            width = len(data[0])
-            height = len(data)
-            pixel_amount = width * height
-            count = 0
-            for row in data:
-                for col in row:
-                    count += rgb_to_gray_scale(col)
-            avg_gray = round(count / pixel_amount, 2)
-            app.display_gray_pixel_amount(pixel_amount, avg_gray)
-"""
 
 
 #
