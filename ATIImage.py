@@ -208,13 +208,17 @@ class ATIImage(object):
 
     def noise_salt_and_pepper(self, density):
         # Rayleigh is Multiplicative
+        items_changed = 0
+        total_items = 0
         for x in range(self.width):
             for y in range(self.height):
+                total_items = total_items + 1
                 new_random = ATIRandom.random()
                 if new_random <= density:
+                    items_changed = items_changed + 1
                     self.set_at((x, y), [0, 0, 0])
                 if new_random >= (1 - density):
-                    self.set_at((x, y), [255, 255, 255])
+                    self.set_at((x, y), [self.max_gray_level, self.max_gray_level, self.max_gray_level])
         return
 
     #
