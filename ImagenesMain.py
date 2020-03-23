@@ -27,6 +27,7 @@ class Window(Frame):
         self.file_submenu.add_command(label="Circle", command=new_white_circle)
         self.file_submenu.add_command(label="Square", command=new_white_square)
         self.file_submenu.add_command(label="White empty image", command=open_new_image_window)
+        self.file_submenu.add_command(label="Degrade", command=new_degrade_image)
         self.file_menu.add_cascade(label="New File", menu=self.file_submenu)
 
         self.file_menu.add_command(label="Load Image", command=open_file)
@@ -895,7 +896,7 @@ def change_pixel_val(x, y, pixel_color):
 
 
 #
-#   Square & Circle
+#   New Files
 #
 def open_new_image_window():
     NewImageWindow()
@@ -1101,6 +1102,73 @@ class NewWhiteSquare:
         draw_images()
         app.enable_image_menu()
         self.close_window()
+
+def new_degrade_image():
+    NewDegrade()
+
+class NewDegrade:
+    def __init__(self):
+        self.window = Tk()
+        self.window.focus_set()
+        self.window.title("New Degrade")
+
+        Label(self.window, text="Select size of degrade image").grid(row=0, column=0)
+
+        Label(self.window, text="Width (px): ").grid(row=1, column=0)
+        self.sclWidth = Scale(self.window, from_=1, to=720, resolution=16, orient=HORIZONTAL, length=250)
+        self.sclWidth.grid(row=1, column=1)
+
+        Label(self.window, text="Height (px): ").grid(row=2, column=0)
+        self.sclHeight = Scale(self.window, from_=1, to=720, resolution=16, orient=HORIZONTAL, length=250)
+        self.sclHeight.grid(row=2, column=1)
+
+        self.btnCancel = Button(self.window, text="Cancel", command=self.close_window)
+        self.btnCancel.grid(row=6, column=0)
+
+        self.btnCreateGreyDegrade = Button(self.window, text="Create Grey Degrade",
+                                           command=self.create_new_grey_degrade)
+        self.btnCreateGreyDegrade.grid(row=6, column=1)
+        self.btnCreateColorDegrade = Button(self.window, text="Create Color Degrade",
+                                            command=self.create_new_color_degrade)
+        self.btnCreateColorDegrade.grid(row=6, column=2)
+
+    def create_new_grey_degrade(self):
+        function = ATIColor.grey_degrade
+        self.create_new_degrade(function)
+        pass
+
+    def create_new_color_degrade(self):
+        function = ATIColor.color_degrade
+        self.create_new_degrade(function)
+        pass
+
+    def create_new_degrade(self, function):
+        global editableImage
+        global originalImage
+        data = []
+        height = self.sclHeight.get()
+        width = self.sclWidth.get()
+        top_left = [20, 20]
+        for y in range(height):
+            row = []
+            for x in range(width):
+                row.append(function(x, width))
+            data.append(row)
+
+        image = ATIImage(data=data, width=width, height=height, image_type='.ppm', active=True,
+                         editable=True, top_left=top_left)
+        image.max_gray_level = 255
+        image.magic_num = 'P6'
+        editableImage = image
+        originalImage = image.get_copy()
+        originalImage.set_top_left((image.top_left[0] + image.width, 20))
+        draw_images()
+        app.enable_image_menu()
+        self.close_window()
+        pass
+
+    def close_window(self):
+        self.window.destroy()
 
 
 #

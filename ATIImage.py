@@ -425,6 +425,9 @@ class ATIImage(object):
 
 
 class ATIColor:
+    MAX_COLOR = 256 * 256 * 255 + 255 * 256 + 255
+    MIN_COLOR = 0
+
     def __init__(self):
         pass
 
@@ -452,7 +455,7 @@ class ATIColor:
 
     @classmethod
     def rgb_to_hsv(cls, rgb_color):
-        h, s= 0, 0
+        h, s = 0, 0
 
         r = rgb_color[0]
         g = rgb_color[1]
@@ -537,3 +540,32 @@ class ATIColor:
                 raise Exception("Error in HSV Color")
 
         return [round(r), round(g), round(b)]
+
+    @classmethod
+    def color_to_int(cls, image_color):
+        r = image_color[0]
+        g = image_color[1]
+        b = image_color[2]
+        return r + g * 256 + b * 256 * 256
+
+    @classmethod
+    def int_to_color(cls, color_num):
+        r, g, b = 0, 0, 0
+        divisor = 256 * 256
+        b = color_num // divisor
+        rest = color_num % divisor
+        divisor = 256
+        g = rest // divisor
+        r = rest % divisor
+        return [r, g, b]
+
+
+    @classmethod
+    def grey_degrade(cls, x, width):
+        color_num = round((x * 255) / width)
+        return [color_num, color_num, color_num]
+
+    @classmethod
+    def color_degrade(cls, x, width):
+        color_num = round((x * cls.MAX_COLOR) / width)
+        return cls.int_to_color(color_num)
