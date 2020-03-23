@@ -23,7 +23,7 @@ class Window(Frame):
 
         self.file_menu = Menu(self.menu)
         self.file_submenu = Menu(self.file_menu)
-        self.file_submenu.add_command(label="circle", command=new_white_circle)
+        self.file_submenu.add_command(label="Circle", command=new_white_circle)
         self.file_submenu.add_command(label="Square", command=new_white_square)
         self.file_submenu.add_command(label="Empty File", state=self.image_loaded)
         self.file_menu.add_cascade(label="New File", menu=self.file_submenu)
@@ -53,9 +53,8 @@ class Window(Frame):
         self.menu.add_cascade(label="Edit", menu=self.edit_menu)
 
         self.view_menu = Menu(self.menu)
-        self.view_menu.add_command(label="HSV Color")
         self.view_menu.add_command(label="Histogram", command=histogram_window)
-        self.view_menu.add_command(label="Equalize", command=equalize_histogram)
+        # self.view_menu.add_command(label="Equalize", command=equalize_histogram)
         self.menu.add_cascade(label="View", menu=self.view_menu)
 
         self.disable_image_menu()
@@ -74,32 +73,47 @@ class Window(Frame):
                                 command=lambda: change_pixel_val(self.xLabel['text'], self.yLabel['text'],
                                                                  self.valueEntry.get()))
         self.btnChange.grid(row=2, column=2)
-        Label(master, text="Pixel amount: ").grid(row=3, column=0)
-        self.pixel_amount = Label(master, text="0")
-        self.pixel_amount.grid(row=3, column=1)
-        Label(master, text="Grayscale average: ").grid(row=4, column=0)
-        self.gray_avg = Label(master, text="0")
-        self.gray_avg.grid(row=4, column=1)
 
-        Label(master, text="Region seleccionada: ").grid(row=5, column=0)
-        Label(master, text="Grey Average: ").grid(row=6, column=0)
-        Label(master, text="Red Average: ").grid(row=7, column=0)
-        Label(master, text="Green Average ").grid(row=8, column=0)
-        Label(master, text="Blue Average ").grid(row=9, column=0)
+        self.hsv_h = StringVar()
+        self.hsv_s = StringVar()
+        self.hsv_v = StringVar()
+        Label(master, text="H: ").grid(row=3, column=0)
+        self.lblHValue = Label(master, text="0", textvariable=self.hsv_h)
+        self.lblHValue.grid(row=3, column=1)
+        Label(master, text=" S: ").grid(row=3, column=2)
+        self.lblSValue = Label(master, text="0", textvariable=self.hsv_s)
+        self.lblSValue.grid(row=3, column=3)
+        Label(master, text=" V: ").grid(row=3, column=4)
+        self.lblVValue = Label(master, text="0", textvariable=self.hsv_v)
+        self.lblVValue.grid(row=3, column=5)
+
+        Label(master, text="Pixel amount: ").grid(row=4, column=0)
+        self.pixel_amount = Label(master, text="0")
+        self.pixel_amount.grid(row=4, column=1)
+
+        Label(master, text="Grayscale average: ").grid(row=5, column=0)
+        self.gray_avg = Label(master, text="0")
+        self.gray_avg.grid(row=5, column=1)
+
+        Label(master, text="Selected region: ").grid(row=6, column=0)
+        Label(master, text="Grey Average: ").grid(row=7, column=0)
+        Label(master, text="Red Average: ").grid(row=8, column=0)
+        Label(master, text="Green Average ").grid(row=9, column=0)
+        Label(master, text="Blue Average ").grid(row=10, column=0)
 
         self.selection_pixel_count = Label(master, text="0")
-        self.selection_pixel_count.grid(row=5, column=2)
+        self.selection_pixel_count.grid(row=6, column=1)
         self.grey_pixel_average = Label(master, text="0")
-        self.grey_pixel_average.grid(row=6, column=2)
+        self.grey_pixel_average.grid(row=7, column=1)
 
         self.red_pixel_average = Label(master, text="0")
-        self.red_pixel_average.grid(row=7, column=2)
+        self.red_pixel_average.grid(row=8, column=1)
 
         self.green_pixel_average = Label(master, text="0")
-        self.green_pixel_average.grid(row=8, column=2)
+        self.green_pixel_average.grid(row=9, column=1)
 
         self.blue_pixel_average = Label(master, text="0")
-        self.blue_pixel_average.grid(row=9, column=2)
+        self.blue_pixel_average.grid(row=10, column=1)
 
     def exit_program(self):
         self.master.destroy()
@@ -131,10 +145,14 @@ class Window(Frame):
         pass
 
     def set_value_entry(self, x, y, value):
+        hsv_color = ATIColor.rgb_to_hsv(value)
         self.xLabel['text'] = x
         self.yLabel['text'] = y
         self.valueEntry.delete(0, END)
         self.valueEntry.insert(0, value)
+        self.hsv_h.set(hsv_color[0].__str__())
+        self.hsv_s.set(hsv_color[1].__str__())
+        self.hsv_v.set(hsv_color[2].__str__())
 
     def copy_window(self):
         self.__CopyWindow()
@@ -876,24 +894,27 @@ def new_white_circle():
 
     data = []
     radius = 50
-    center = 100
-    top_left = 50
+    center = [100, 100]
+    top_left = [20, 20]
+    width = 200
+    height = 200
 
-    for i in range(200):
+    for y in range(height):
         row = []
-        for j in range(200):
-            if math.sqrt((i + top_left - center) ** 2 + (j + top_left - center) ** 2) <= radius:
+        for x in range(width):
+            if math.sqrt((x - center[0]) ** 2 + (y - center[1]) ** 2) <= radius:
                 row.append((0, 0, 0))
             else:
                 row.append((255, 255, 255))
         data.append(row)
 
-    image = ATIImage(data=data, width=200, height=200, image_type='.ppm', active=True, editable=True, top_left=(20, 20))
+    image = ATIImage(data=data, width=width, height=height, image_type='.ppm',
+                     active=True, editable=True, top_left=top_left)
     image.max_gray_level = 255
     image.magic_num = 'P6'
     editableImage = image
     originalImage = image.get_copy()
-    originalImage.set_top_left((220, 20))
+    originalImage.set_top_left((image.top_left[0] + image.width, 20))
     draw_images()
 
 
@@ -901,25 +922,28 @@ def new_white_square():
     global editableImage
     global originalImage
     data = []
-    height = 100
-    width = 100
-    tl_square = 50
-    for i in range(200):
+    height = 200
+    width = 200
+    top_left = [20, 20]
+    radius = 50
+    center = [100, 100]
+
+    for y in range(height):
         row = []
-        for j in range(200):
-            if tl_square <= i <= tl_square + width and tl_square <= j <= tl_square + height:
+        for x in range(width):
+            if abs(x - center[0]) <= radius and abs(y - center[1]) <= radius:
                 row.append((0, 0, 0))
             else:
                 row.append((255, 255, 255))
         data.append(row)
 
     image = ATIImage(data=data, width=width, height=height, image_type='.ppm', active=True,
-                     editable=True, top_left=(20, 20))
+                     editable=True, top_left=top_left)
     image.max_gray_level = 255
     image.magic_num = 'P6'
     editableImage = image
     originalImage = image.get_copy()
-    originalImage.set_top_left((220, 20))
+    originalImage.set_top_left((image.top_left[0] + image.width, 20))
     draw_images()
 
 

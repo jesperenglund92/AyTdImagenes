@@ -424,88 +424,6 @@ class ATIImage(object):
                 self.set_at((x, y), (255 - color[0], 255 - color[1], 255 - color[2]))
 
 
-def rgb_color_2_hsv_color(rgb_data):
-    r = rgb_data[0]
-    g = rgb_data[1]
-    b = rgb_data[2]
-
-    max_color = max(r, g, b)
-    min_color = min(r, g, b)
-
-    h, s, v = 0, 0, 0
-
-    if max_color == min_color:
-        h = "n/a"
-
-    if max_color == r:
-        if g >= b:
-            h = round(60 * (g - b) / (max_color - min_color)) % 360
-        else:
-            h = (round(60 * (g - b) / (max_color - min_color)) + 360) % 360
-
-    if max_color == g:
-        h = (round(60 * (b - r) / (max_color - min_color)) + 120) % 360
-    if max_color == b:
-        h = (round(60 * (r - g) / (max_color - min_color)) + 240) % 360
-
-    if max_color == 0:
-        s = 0
-    else:
-        s = 1 - min_color / max_color
-
-    v = max_color
-    return [h, s, v]
-
-
-def rgb2hsv(image_data, width, height):
-    hsv_data = []
-    for y in range(height):
-        tmp_list = []
-        for x in range(width):
-            tmp_list.append(rgb_color_2_hsv_color(image_data[x][y]))
-        hsv_data.append(tmp_list)
-    return hsv_data
-
-
-def hsv_color_2_rgb_color(hsv_data):
-    h = hsv_data[0]
-    s = hsv_data[1]
-    v = hsv_data[2]
-
-    if h > 360:
-        h = math.fmod(h, 360)
-
-    aux_h = math.ceil(h / 60) % 6
-    f = ((math.ceil(h) / 60) % 6) - aux_h
-    p = v * (1 - s)
-    q = v * (1 - f * s)
-    t = v * (1 - (1 - f) * s)
-
-    if aux_h == 0:
-        return [v, t, p]
-    if aux_h == 1:
-        return [q, v, p]
-    if aux_h == 2:
-        return [p, v, t]
-    if aux_h == 3:
-        return [p, q, v]
-    if aux_h == 4:
-        return [t, p, v]
-    if aux_h == 5:
-        return [v, p, q]
-    return "n/a"
-
-
-def hsv2rgb(image_data, width, height):
-    rgb_data = []
-    for y in range(height):
-        tmp_list = []
-        for x in range(width):
-            tmp_list.append(hsv_color_2_rgb_color(image_data[x][y]))
-        rgb_data.append(tmp_list)
-    return rgb_data
-
-
 class ATIColor:
     def __init__(self):
         pass
@@ -531,3 +449,91 @@ class ATIColor:
         for x in range(3):
             color_array[x] = color_array[x] * scalar
         return color_array
+
+    @classmethod
+    def rgb_to_hsv(cls, rgb_color):
+        h, s= 0, 0
+
+        r = rgb_color[0]
+        g = rgb_color[1]
+        b = rgb_color[2]
+
+        max_color_value = max(r, g, b)
+        min_color_value = min(r, g, b)
+
+        delta = max_color_value - min_color_value
+        v = round(max_color_value, 2)
+
+        if v == 0:
+            s = 0
+        else:
+            s = round(delta / max_color_value, 2)
+
+        if s == 0:
+            h = "n/a"
+        else:
+            if r == max_color_value:
+                h = (g - b) / delta
+            elif g == max_color_value:
+                h = 2 + (b - r) / delta
+            elif b == max_color_value:
+                h = 4 + (r - g) / delta
+            h = round(h * 60, 2)
+            if h < 0:
+                h = h + 360
+
+        return [h, s, v]
+
+    @classmethod
+    def hsv_to_rgb(cls, hsv_color):
+        h = hsv_color[0]
+        s = hsv_color[1]
+        v = round(hsv_color[2])
+
+        f, p, q, t, i = 0, 0, 0, 0, 0
+
+        if s == 0:
+            if h == "n/a":
+                r = v
+                g = v
+                b = v
+            else:
+                raise Exception("Error in HSV Color")
+        else:
+            if h == 360:
+                h = 0
+            h /= 60
+            i = math.floor(h)
+            f = h - i
+            p = v * (1 - s)
+            q = v * (1 - (s * f))
+            t = v * (1 - (s * (1 - f)))
+
+            if i == 0:
+                r = v
+                g = t
+                b = p
+            elif i == 1:
+                r = q
+                g = v
+                b = p
+            elif i == 2:
+                r = p
+                g = v
+                b = t
+            elif i == 3:
+                r = p
+                g = q
+                b = v
+            elif i == 4:
+                r = t
+                g = p
+                b = v
+            elif i == 5:
+                r = v
+                g = p
+                b = q
+            else:
+                raise Exception("Error in HSV Color")
+
+        return [round(r), round(g), round(b)]
