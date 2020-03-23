@@ -34,13 +34,22 @@ class Window(Frame):
         self.menu.add_cascade(label="File", menu=self.file_menu)
 
         self.edit_menu = Menu(self.menu)
-        self.edit_menu.add_command(label="Copy", command=self.copy_window)
+        # self.edit_menu.add_command(label="Copy", command=self.copy_window)
         self.edit_menu.add_command(label="Operations", command=operations_window)
-        self.edit_menu.add_command(label="Threshold Image", command=self.threshold_window)
-        self.edit_menu.add_command(label="Equalize Image", command=self.equalization_window)
+        self.edit_menu.add_command(label="Threshold Image", command=threshold_window)
+        self.edit_menu.add_command(label="Equalize Image", command=equalize_histogram)
         self.edit_menu.add_command(label="Negative", command=make_negative)
         self.edit_menu.add_command(label="Copy selection", command=copy_selection)
         self.edit_menu.add_command(label="Add Noise", command=open_noise_window)
+
+        self.edit_submenu = Menu(self.edit_menu)
+        self.edit_menu.add_cascade(label="Filter", menu=self.edit_submenu)
+        self.edit_submenu.add_command(label="Average", command=lambda: set_kernel_size("avg"))
+        self.edit_submenu.add_command(label="Median", command=lambda: set_kernel_size("mdn"))
+        self.edit_submenu.add_command(label="Median weighted", command=filter_image_mdnp)
+        self.edit_submenu.add_command(label="Gauss", command=lambda: set_kernel_size("gau"))
+        self.edit_submenu.add_command(label="Edge enhancement", command=set_edge_level)
+
         self.menu.add_cascade(label="Edit", menu=self.edit_menu)
 
         self.view_menu = Menu(self.menu)
@@ -137,41 +146,146 @@ class Window(Frame):
             self.window.title("Copy Image")
             pass
 
-    def threshold_window(self):
-        self._ThresholdWindow()
 
-    class _ThresholdWindow:
-        def __init__(self):
-            self.window = Tk()
-            self.window.focus_set()
-            self.window.title("Threshold Image")
-            Label(self.window, text="Threshold: ").grid(row=0, column=0)
+#
+#   Filters
+#
 
-            self.threshold = StringVar()
+def set_edge_level():
+    window = Tk()
+    window.focus_set()
+    window.title("Edge enhancement level")
+    Label(window, text="Level (0-1): ").grid(row=0, column=0)
+    level = Entry(window)
+    level.grid(row=0, column=1)
+    Button(window, text="Change", command=lambda: edge_enhance(level.get())).grid(row=0, column=2)
 
-            self.txtThreshold = Entry(self.window, textvariable=self.threshold)
-            self.txtThreshold.grid(row=0, column=1)
-            self.btnChange = Button(self.window, text="Change",
-                                    command=self.apply_threshold_function)
-            self.btnChange.grid(row=0, column=2)
 
-        def apply_threshold_function(self):
-            threshold = int(self.txtThreshold.get())
-            # threshold = int(threshold)
-            if threshold < 0 or threshold > 255:
-                raise Exception("Only numbers between 0 and 255")
+def set_kernel_size(kernel_type):
+    window = Tk()
+    window.focus_set()
+    window.title("Mask size")
+    Label(window, text="Size: ").grid(row=0, column=0)
+    size = Entry(window)
+    size.grid(row=0, column=1)
+    if kernel_type == "gau":
+        Label(window, text="Sigma: ").grid(row=1, column=0)
+        sigma = Entry(window)
+        sigma.grid(row=1, column=1)
+        Button(window, text="Change", command=lambda: which_filter(size.get(), kernel_type, sigma.get())) \
+            .grid(row=0, column=2)
+    else:
+        Button(window, text="Change", command=lambda: which_filter(size.get(), kernel_type)).grid(row=0, column=2)
 
-            editableImage.threshold_function(threshold)
-            draw_ati_image(editableImage)
 
-    def equalization_window(self):
-        self.__EqualizationWindow()
+def which_filter(size, filter_type, sigma=None):
+    if filter_type == "avg":
+        filter_image_avg(size)
+    elif filter_type == "mdn":
+        filter_image_mdn(size)
+    elif filter_type == "gau":
+        filter_image_gauss(size, sigma)
 
-    class __EqualizationWindow:
-        def __init__(self):
-            self.window = Tk()
-            self.window.focus_set()
-            self.window.title("Threshold Image")
+
+def redraw_img(img, filtered_image):
+    filtered_image = np.repeat(filtered_image, 3)
+    filtered_image = filtered_image.reshape((img.shape[0], img.shape[1], 3))
+    editableImage.data = filtered_image
+    draw_ati_image(editableImage)
+
+
+def edge_enhance(level):
+    level = float(level)
+    img = np.array(originalImage.data)[:, :, 0]
+    h_x = np.matrix([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
+    h_y = np.matrix([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
+    size = 3
+    pad = int((size - 1) / 2)
+    g_x = convolve_func_avg(img, h_x, pad, size)
+    g_y = convolve_func_avg(img, h_y, pad, size)
+    g = np.sqrt(g_x ** 2 + g_y ** 2)
+    const = level
+    new_img = img + g * const
+    new_img = normalize(new_img)
+    redraw_img(img, new_img)
+
+
+def filter_image_gauss(size, sigma):
+    size = int(size)
+    sigma = float(sigma)
+    n_size = (size - 1) / 2
+    pad = int((size - 1) / 2)
+    img = np.array(originalImage.data)[:, :, 0]
+    x, y = np.mgrid[-n_size:n_size + 1, -n_size:n_size + 1]
+    k = 1 / (2 * math.pi * sigma ** 2)
+    gauss_kernel = k * np.exp(-(x ** 2 + y ** 2) / (2 * sigma ** 2))
+    mask = gauss_kernel / np.sum(gauss_kernel)
+    gauss_img = convolve_func_avg(img, mask, pad, size)
+    redraw_img(img, gauss_img)
+
+
+def filter_image_mdnp():
+    size = 3
+    mask = np.matrix([[1, 2, 1], [2, 4, 2], [1, 2, 1]])
+    pad = int((size - 1) / 2)
+    img = np.array(originalImage.data)[:, :, 0]
+    mdn = convolve_func_mdnp(img, mask, pad, size)
+    redraw_img(img, mdn)
+
+
+def filter_image_mdn(size):
+    size = int(size)
+    pad = int((size - 1) / 2)
+    img = np.array(originalImage.data)[:, :, 0]
+    mdn = convolve_func_mdn(img, pad, size)
+    redraw_img(img, mdn)
+
+
+def filter_image_avg(size):
+    size = int(size)
+    mask = np.ones((size, size))
+    k = 1 / (size ** 2)
+    mask = k * mask
+    pad = int((size - 1) / 2)
+    img = np.array(originalImage.data)[:, :, 0]
+    avg = convolve_func_avg(img, mask, pad, size)
+    redraw_img(img, avg)
+
+
+def convolve_func_mdnp(img, mask, pad, size):
+    output = np.zeros_like(img)
+    image_padded = np.zeros((img.shape[0] + pad * 2, img.shape[1] + pad * 2))
+    image_padded[pad:-pad, pad:-pad] = img
+    flatmask = np.array(mask).flatten()
+    for x in range(img.shape[1]):
+        for y in range(img.shape[0]):
+            weightmdn = []
+            flatarea = image_padded[y:y + size, x:x + size].flatten()
+            for i in range(len(flatmask)):
+                for j in range(flatmask[i]):
+                    weightmdn.append(flatarea[i])
+            output[y, x] = np.median(weightmdn)
+    return output
+
+
+def convolve_func_mdn(img, pad, size):
+    output = np.zeros_like(img)
+    image_padded = np.zeros((img.shape[0] + pad * 2, img.shape[1] + pad * 2))
+    image_padded[pad:-pad, pad:-pad] = img
+    for x in range(img.shape[1]):
+        for y in range(img.shape[0]):
+            output[y, x] = np.median(image_padded[y:y + size, x:x + size])
+    return output
+
+
+def convolve_func_avg(img, mask, pad, size):
+    output = np.zeros_like(img)
+    image_padded = np.zeros((img.shape[0] + pad * 2, img.shape[1] + pad * 2))
+    image_padded[pad:-pad, pad:-pad] = img
+    for x in range(img.shape[1]):
+        for y in range(img.shape[0]):
+            output[y, x] = (mask * image_padded[y:y + size, x:x + size]).sum()
+    return output
 
 
 #
@@ -693,6 +807,35 @@ def make_negative(image_id=0):
     draw_ati_image(image)
 
 
+def threshold_window():
+    ThresholdWindow()
+
+
+class ThresholdWindow:
+    def __init__(self):
+        self.window = Tk()
+        self.window.focus_set()
+        self.window.title("Threshold Image")
+        Label(self.window, text="Threshold: ").grid(row=0, column=0)
+
+        self.threshold = StringVar()
+
+        self.txtThreshold = Entry(self.window, textvariable=self.threshold)
+        self.txtThreshold.grid(row=0, column=1)
+        self.btnChange = Button(self.window, text="Change",
+                                command=self.apply_threshold_function)
+        self.btnChange.grid(row=0, column=2)
+
+    def apply_threshold_function(self):
+        threshold = int(self.txtThreshold.get())
+        # threshold = int(threshold)
+        if threshold < 0 or threshold > 255:
+            raise Exception("Only numbers between 0 and 255")
+
+        editableImage.threshold_function(threshold)
+        draw_ati_image(editableImage)
+
+
 #
 #   Setters
 #
@@ -890,15 +1033,15 @@ def get_histogram(img_data, step, band):
     return y_points, x_points
 
 
-def equalize_histogram(self):
-    y_vals, x_vals = get_histogram(editableImage.data, 1, 0)
-    cs = cum_sum(y_vals)
+def equalize_histogram():
+    y_values, x_values = get_histogram(editableImage.data, 1, 0)
+    cs = cum_sum(y_values)
     cs = normalize(cs)
-    img = np.asarray(editableImage.data)
-    flat = img.flatten()
-    img_new = cs[flat]
-    img_new = np.reshape(img_new, img.shape)
-    editableImage.data = img_new
+    image = np.asarray(editableImage.data)
+    flat = image.flatten()
+    image_new = cs[flat]
+    image_new = np.reshape(image_new, image.shape)
+    editableImage.data = image_new
     draw_ati_image(editableImage)
 
 
@@ -910,13 +1053,13 @@ def cum_sum(hist):
     return np.array(cum_array)
 
 
-def normalize(cs):
-    n = (cs - cs.min())
-    N = cs.max() - cs.min()
-    cs = (n / N) * 255
-    cs = np.rint(cs)
-    cs = cs.astype(int)
-    return cs
+def normalize(cum_sum_pixel):
+    n = (cum_sum_pixel - cum_sum_pixel.min())
+    size = cum_sum_pixel.max() - cum_sum_pixel.min()
+    cum_sum_pixel = (n / size) * 255
+    cum_sum_pixel = np.rint(cum_sum_pixel)
+    cum_sum_pixel = cum_sum_pixel.astype(int)
+    return cum_sum_pixel
 
 
 #

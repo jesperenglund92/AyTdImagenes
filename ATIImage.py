@@ -19,6 +19,10 @@ class ATIImage(object):
         self.magic_num = None
         self.max_gray_level = None
 
+    #
+    #   Getters
+    #
+
     def get_copy(self):
         new_data = self.__copy_data()
         new_width = copy.copy(self.width)
@@ -56,13 +60,6 @@ class ATIImage(object):
 
     def get_botton_right(self):
         return [self.top_left[0] + self.width, self.top_left[1] + self.height]
-
-    def in_display_image(self, pos):
-        botton_right = self.get_botton_right()
-        return self.top_left[0] <= pos[0] <= botton_right[0] and self.top_left[1] <= pos[1] <= botton_right[1]
-
-    def set_top_left(self, pos):
-        self.top_left = pos
 
     def get_red_band(self):
         data = []
@@ -106,15 +103,6 @@ class ATIImage(object):
             raise Exception("Invalid position")
         return self.get_at((x - 1, y - 1))
 
-    def set_at_display(self, pos, color):
-        x = pos[0] - self.top_left[0] - 1
-        y = pos[1] - self.top_left[1] - 1
-        if not (0 <= x <= self.width - 1):
-            raise Exception("Invalid position")
-        if not (0 <= y <= self.height - 1):
-            raise Exception("Invalid position")
-        self.set_at((x, y), color)
-
     def __get_band_average_display(self, tl, br, band):
         left = tl[0]
         top = tl[1]
@@ -144,17 +132,40 @@ class ATIImage(object):
         # get colorvalue based on a screen position
         return self.data[y - self.top_left[1]][x - self.top_left[0]]
 
+    #
+    #   Setters
+    #
+
+    def set_top_left(self, pos):
+        self.top_left = pos
+
+    def set_at_display(self, pos, color):
+        x = pos[0] - self.top_left[0] - 1
+        y = pos[1] - self.top_left[1] - 1
+        if not (0 <= x <= self.width - 1):
+            raise Exception("Invalid position")
+        if not (0 <= y <= self.height - 1):
+            raise Exception("Invalid position")
+        self.set_at((x, y), color)
+
+    #
+    #   Condition Statements
+    #
+
+    def in_display_image(self, pos):
+        botton_right = self.get_botton_right()
+        return self.top_left[0] <= pos[0] <= botton_right[0] and self.top_left[1] <= pos[1] <= botton_right[1]
+
     def set_at(self, pos, color):
         self.data[pos[1]][pos[0]] = color
 
     def set_at_band(self, pos, color, band):
         self.data[pos[1]][pos[0]][band] = color
 
-    """
-    
-    Noises
-    
-    """
+    #
+    #   Noises
+    #
+
     def noise_gaussian(self, percent, mu=0, sigma=1):
         # Gaussian is Aditive
         function = ATIRandom.gaussian
@@ -169,7 +180,7 @@ class ATIImage(object):
                     new_color = [int(round(self.get_at((x, y))[0] * variation)),
                                  int(round(self.get_at((x, y))[1] * variation)),
                                  int(round(self.get_at((x, y))[2] * variation))]
-                    new_color = self.__fix_color(new_color)
+                    new_color = ATIColor.fix_color(new_color)
                     self.set_at((x, y), new_color)
         return
 
@@ -178,27 +189,12 @@ class ATIImage(object):
             for y in range(self.height):
                 if ATIRandom.has_to_apply(percent):
                     variation = function(func_parameter1, func_parameter2)
-                    new_color = [ int(round(self.get_at((x, y))[0] + variation)),
-                                  int(round(self.get_at((x, y))[1] + variation)),
-                                  int(round(self.get_at((x, y))[2] + variation))]
-                    new_color = self.__fix_color(new_color)
+                    new_color = [int(round(self.get_at((x, y))[0] + variation)),
+                                 int(round(self.get_at((x, y))[1] + variation)),
+                                 int(round(self.get_at((x, y))[2] + variation))]
+                    new_color = ATIColor.fix_color(new_color)
                     self.set_at((x, y), new_color)
         return
-
-    def __fix_color(self, color):
-        if color[0] < 0:
-            color[0] = 0
-        if color[1] < 0:
-            color[1] = 0
-        if color[2] < 0:
-            color[2] = 0
-        if color[0] > 255:
-            color[0] = 255
-        if color[1] > 255:
-            color[1] = 255
-        if color[2] > 255:
-            color[2] = 255
-        return color
 
     def noise_rayleigh(self, percent, epsilon):
         # Rayleigh is Multiplicative
@@ -221,27 +217,9 @@ class ATIImage(object):
                     self.set_at((x, y), [255, 255, 255])
         return
 
-    """@classmethod
-    def add_image(cls, img1, img2):
-        if img1.width != img2.width or img1.height != img2 != img2.height:
-            raise Exception('Image should be same width and height')
-        image = []
-        for x in range(img1.width):
-            tmp_list = []
-            for y in range(img1.height):
-                tmp_list.append([
-                    img1.get_at((x, y))[0] + img2.get_at((x, y))[0],
-                    img1.get_at((x, y))[1] + img2.get_at((x, y))[1],
-                    img1.get_at((x, y))[2] + img2.get_at((x, y))[2]
-                ])
-            image.append(tmp_list)
-        return cls(image, img1.width, img2.height, img1.type, img1.topLeft)"""
-
-    """
-    
-    Image Operations
-    
-    """
+    #
+    #   Image Operations
+    #
 
     # Add Images
     def add_image(self, image):
@@ -256,7 +234,7 @@ class ATIImage(object):
                 ])
 
         if self.__needs_compression():
-            self.__scalling_compression()
+            self.__scale_compression()
         return
 
     def __needs_compression(self):
@@ -279,24 +257,8 @@ class ATIImage(object):
                     self.get_at((x, y))[1] - image.get_at((x, y))[1],
                     self.get_at((x, y))[2] - image.get_at((x, y))[2]
                 ])
-        self.__scalling_compression()
+        self.__scale_compression()
         return
-
-    # @classmethod
-    # def subtract_image(cls, img1, img2):
-    #    if img1.width != img2.width or img1.height != img2 != img2.height:
-    #        raise Exception('Image should be same width and height')
-    #    image = []
-    #    for x in range(img1.width):
-    #        tmpList = []
-    #        for y in range(img1.height):
-    #            tmpList.append([
-    #                img1.get_at((x, y))[0] - img2.get_at((x, y))[0],
-    #                img1.get_at((x, y))[1] - img2.get_at((x, y))[1],
-    #                img1.get_at((x, y))[2] - img2.get_at((x, y))[2]
-    #            ])
-    #        image.append(tmpList)
-    #    return cls(image, img1.width, img2.height, img1.type, img1.topLeft)
 
     # Subtract images
     def multiply_image(self, image):
@@ -312,27 +274,7 @@ class ATIImage(object):
                        color1[2] * color2[2]]
                 self.set_at((x, y), ans)
 
-        self.__scalling_compression()
-
-    """@classmethod
-    def multiply_image(cls, img1, img2):
-        # Todo: Implement
-        raise Exception('Not implemented method')
-    """
-    """if img1.width != img2.width or img1.height != img2 != img2.height:
-        raise Exception('Image should be same width and height')
-    image = []
-    for x in range(img1.width):
-        tmpList = []
-        for y in range(img1.height):
-            tmpList.append([
-                img1.get_at((x, y))[0] - img2.get_at((x, y))[0],
-                img1.get_at((x, y))[1] - img2.get_at((x, y))[1],
-                img1.get_at((x, y))[2] - img2.get_at((x, y))[2]
-            ])
-        image.append(tmpList)
-    return cls(image, img1.width, img2.height, img1.type, img1.topLeft)
-    """
+        self.__scale_compression()
 
     # Scalar product
     def scalar_product(self, scalar):
@@ -340,25 +282,22 @@ class ATIImage(object):
             raise Exception('scalar is not an integer value')
         for x in range(self.width):
             for y in range(self.height):
-                self.set_at((x, y), self.__scalar_product(self.get_at((x, y)), scalar))
+                self.set_at((x, y), ATIColor.scalar_product(self.get_at((x, y)), scalar))
         self.dynamic_compression()
-
-    def __scalar_product(self, array, scalar):
-        for x in range(3):
-            array[x] = array[x] * scalar
-        return array
 
     # Threshold Function
     def __threshold_assign(self, array, threshold):
         # for x in range(3):
+        max_value = self.max_gray_level
+        min_value = 0
         if array[0] <= threshold:
-            array[0] = 0
-            array[1] = 0
-            array[2] = 0
+            array[0] = min_value
+            array[1] = min_value
+            array[2] = min_value
         else:
-            array[0] = 255
-            array[1] = 255
-            array[2] = 255
+            array[0] = max_value
+            array[1] = max_value
+            array[2] = max_value
         return array
 
     def threshold_function(self, threshold):
@@ -368,17 +307,17 @@ class ATIImage(object):
             for y in range(self.height):
                 self.set_at((x, y), self.__threshold_assign(self.get_at((x, y)), threshold))
 
-    def __scalling_compression(self):
-        self.__scalling_compression_by_band(0)
-        self.__scalling_compression_by_band(1)
-        self.__scalling_compression_by_band(2)
+    def __scale_compression(self):
+        self.__scale_compression_by_band(0)
+        self.__scale_compression_by_band(1)
+        self.__scale_compression_by_band(2)
 
     def fill_band_black(self, band):
         for x in range(self.width):
             for y in range(self.height):
                 self.set_at_band((x, y), 0, band)
 
-    def __scalling_compression_by_band(self, band):
+    def __scale_compression_by_band(self, band):
         min_val = self.__get_min_by_band(band)
         max_val = self.__get_max_by_band(band)
         if min_val == max_val:
@@ -467,7 +406,7 @@ class ATIImage(object):
     def equalize_image(self):
         raise Exception("Not Implementd method")
 
-    def color_array(self):
+    def color_count_array(self, band):
         array = [0] * 256
         for x in range(self.width):
             for y in range(self.height):
@@ -561,3 +500,30 @@ def hsv2rgb(image_data, width, height):
             tmp_list.append(hsv_color_2_rgb_color(image_data[x][y]))
         rgb_data.append(tmp_list)
     return rgb_data
+
+
+class ATIColor:
+    def __init__(self):
+        pass
+
+    @classmethod
+    def fix_color(cls, color_to_fix):
+        if color_to_fix[0] < 0:
+            color_to_fix[0] = 0
+        if color_to_fix[1] < 0:
+            color_to_fix[1] = 0
+        if color_to_fix[2] < 0:
+            color_to_fix[2] = 0
+        if color_to_fix[0] > 255:
+            color_to_fix[0] = 255
+        if color_to_fix[1] > 255:
+            color_to_fix[1] = 255
+        if color_to_fix[2] > 255:
+            color_to_fix[2] = 255
+        return color_to_fix
+
+    @classmethod
+    def scalar_product(cls, color_array, scalar):
+        for x in range(3):
+            color_array[x] = color_array[x] * scalar
+        return color_array
