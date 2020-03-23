@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import math
 import numpy as np
 
+
 class Window(Frame):
     def __init__(self, master=None):
         Frame.__init__(self, master)
@@ -17,7 +18,6 @@ class Window(Frame):
         self.screenX = 0
         self.screenY = 0
 
-
         file_menu = Menu(menu)
         file_submenu = Menu(file_menu)
         file_menu.add_cascade(label="New File", menu=file_submenu)
@@ -28,7 +28,7 @@ class Window(Frame):
         edit_menu = Menu(menu)
         edit_submenu = Menu(edit_menu)
         edit_menu.add_cascade(label="Filter", menu=edit_submenu)
-        edit_submenu.add_command(label="Average", command=lambda:self.set_kernel_size("avg"))
+        edit_submenu.add_command(label="Average", command=lambda: self.set_kernel_size("avg"))
         edit_submenu.add_command(label="Median", command=lambda: self.set_kernel_size("mdn"))
         edit_submenu.add_command(label="Median weighted", command=filter_image_mdnp)
         edit_submenu.add_command(label="Gauss", command=lambda: self.set_kernel_size("gau"))
@@ -39,7 +39,7 @@ class Window(Frame):
         view_menu.add_command(label="HSV Color")
         view_menu.add_command(label="Histogram", command=self.histogram_window)
         view_menu.add_command(label="Equalize", command=self.equalize_histogram)
-        menu.add_cascade(label="View", menu = view_menu)
+        menu.add_cascade(label="View", menu=view_menu)
 
         Label(master, text="x: ").grid(row=0, column=0)
         Label(master, text="y: ").grid(row=1, column=0)
@@ -61,8 +61,8 @@ class Window(Frame):
         Label(master, text="Region seleccionada: ").grid(row=5, column=0)
         Label(master, text="Grey Average: ").grid(row=6, column=0)
         Label(master, text="Red Average: ").grid(row=7, column=0)
-        Label(master, text="Green Average ").grid(row=8, column= 0)
-        Label(master, text="Blue Average ").grid(row=9, column= 0)
+        Label(master, text="Green Average ").grid(row=8, column=0)
+        Label(master, text="Blue Average ").grid(row=9, column=0)
 
         self.selection_pixel_count = Label(master, text="0")
         self.selection_pixel_count.grid(row=5, column=2)
@@ -119,7 +119,6 @@ class Window(Frame):
         editableImage.data = img_new
         drawATIImage(editableImage)
 
-
     def set_edge_level(self):
         window = Tk()
         window.focus_set()
@@ -128,7 +127,6 @@ class Window(Frame):
         level = Entry(window)
         level.grid(row=0, column=1)
         Button(window, text="Change", command=lambda: edge_enhance(level.get())).grid(row=0, column=2)
-
 
     def set_kernel_size(self, type):
         window = Tk()
@@ -424,4 +422,5 @@ originalImage = ATIImage()
 images.append(editableImage)
 images.append(originalImage)
 
-if __name__ == '__main__': main()
+if __name__ == '__main__':
+    main()
