@@ -254,6 +254,11 @@ def convolve_func_avg(img, mask, pad, size):
     return output
 
 
+
+#
+#   Histogram
+#
+
 def display_histogram(xaxis, yaxis):
     plt.figure(figsize=[10, 8])
     plt.bar(xaxis, yaxis, width=5, color='#0504aa', alpha=0.7)
@@ -299,6 +304,10 @@ def normalize(cs):
     cs = cs.astype(int)
     return cs
 
+
+#
+#   Open
+#
 
 def open_raw():
     global editableImage
