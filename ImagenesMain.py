@@ -573,6 +573,8 @@ def getInput():
                 startx, starty = pygame.mouse.get_pos()
                 if isSelectionActive:
                     drawSelection(newselection.x, newselection.y, newselection.newx, newselection.newy, (255, 255, 255))
+                    for img in images:
+                        drawATIImage(img)
                 newselection.set_startpos((startx, starty))
                 isSelectionActive = True
                 handleMouseinput()
