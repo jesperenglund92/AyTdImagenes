@@ -1103,8 +1103,10 @@ class NewWhiteSquare:
         app.enable_image_menu()
         self.close_window()
 
+
 def new_degrade_image():
     NewDegrade()
+
 
 class NewDegrade:
     def __init__(self):
