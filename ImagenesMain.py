@@ -37,6 +37,7 @@ class Window(Frame):
 
         self.edit_menu = Menu(self.menu)
         # self.edit_menu.add_command(label="Copy", command=self.copy_window)
+        self.edit_menu.add_command(label="Reset Image", command=reset_image)
         self.edit_menu.add_command(label="Operations", command=operations_window)
         self.edit_menu.add_command(label="Threshold Image", command=threshold_window)
         self.edit_menu.add_command(label="Equalize Image", command=equalize_histogram)
@@ -174,6 +175,11 @@ class Window(Frame):
 #   Filters
 #
 
+def reset_image():
+    editableImage.data = originalImage.data
+    draw_ati_image(editableImage)
+
+
 def set_edge_level():
     window = Tk()
     window.focus_set()
@@ -219,7 +225,7 @@ def redraw_img(img, filtered_image):
 
 def edge_enhance(level):
     level = float(level)
-    img = np.array(originalImage.data)[:, :, 0]
+    img = np.array(editableImage.data)[:, :, 0]
     h_x = np.matrix([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
     h_y = np.matrix([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
     size = 3
@@ -238,7 +244,7 @@ def filter_image_gauss(size, sigma):
     sigma = float(sigma)
     n_size = (size - 1) / 2
     pad = int((size - 1) / 2)
-    img = np.array(originalImage.data)[:, :, 0]
+    img = np.array(editableImage.data)[:, :, 0]
     x, y = np.mgrid[-n_size:n_size + 1, -n_size:n_size + 1]
     k = 1 / (2 * math.pi * sigma ** 2)
     gauss_kernel = k * np.exp(-(x ** 2 + y ** 2) / (2 * sigma ** 2))
@@ -251,7 +257,7 @@ def filter_image_mdnp():
     size = 3
     mask = np.matrix([[1, 2, 1], [2, 4, 2], [1, 2, 1]])
     pad = int((size - 1) / 2)
-    img = np.array(originalImage.data)[:, :, 0]
+    img = np.array(editableImage.data)[:, :, 0]
     mdn = convolve_func_mdnp(img, mask, pad, size)
     redraw_img(img, mdn)
 
@@ -259,7 +265,7 @@ def filter_image_mdnp():
 def filter_image_mdn(size):
     size = int(size)
     pad = int((size - 1) / 2)
-    img = np.array(originalImage.data)[:, :, 0]
+    img = np.array(editableImage.data)[:, :, 0]
     mdn = convolve_func_mdn(img, pad, size)
     redraw_img(img, mdn)
 
@@ -270,7 +276,7 @@ def filter_image_avg(size):
     k = 1 / (size ** 2)
     mask = k * mask
     pad = int((size - 1) / 2)
-    img = np.array(originalImage.data)[:, :, 0]
+    img = np.array(editableImage.data)[:, :, 0]
     avg = convolve_func_avg(img, mask, pad, size)
     redraw_img(img, avg)
 
