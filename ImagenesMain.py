@@ -177,7 +177,8 @@ class Window(Frame):
 
 def reset_image():
     global editableImage
-    editableImage.data = originalImage.data
+    # editableImage.data = originalImage.data
+    editableImage.restore_data()
     draw_ati_image(editableImage)
 
 
@@ -555,7 +556,8 @@ class RawWindow:
         editableImage.height = height
         editableImage.width = width
         editableImage.data = image
-        editableImage.max_gray_level = np.max(editableImage.data)
+        editableImage.max_gray_level = 255
+        editableImage.set_restore_image()
 
         originalImage = editableImage.get_copy()
         originalImage.editable = False
@@ -587,6 +589,7 @@ def load_pgm(file):
     editableImage.height = height
     editableImage.magic_num = magic_num
     editableImage.max_gray_level = max_val
+    editableImage.set_restore_image()
 
     originalImage = editableImage.get_copy()
 
@@ -613,6 +616,7 @@ def load_ppm(file):
     editableImage.height = height
     editableImage.magic_num = magic_num
     editableImage.max_gray_level = max_val
+    editableImage.set_restore_image()
 
     originalImage = editableImage.get_copy()
 
@@ -893,6 +897,7 @@ def set_image(image, data, width, height, image_type, top_left, editable):
     image.data = data
     image.width = width
     image.height = height
+    image.set_restore_image()
     image.image_type = image_type
     image.top_left = top_left
     image.editable = editable
@@ -962,6 +967,7 @@ class NewImageWindow:
         image.data = data
         image.width = width
         image.height = height
+        image.set_restore_image()
         image.magic_num = 'P6'
         image.max_gray_level = 255
         editableImage = image

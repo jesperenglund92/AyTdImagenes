@@ -8,6 +8,7 @@ class ATIImage(object):
         if data is None:
             data = []
         self.data = data
+        self.restore_image = []
         self.width = width
         self.height = height
         self.image_type = image_type
@@ -19,10 +20,19 @@ class ATIImage(object):
         self.magic_num = None
         self.max_gray_level = None
         self.id = None
+        self.set_restore_image()
 
     #
     #   Getters
     #
+    def set_restore_image(self):
+        image = []
+        for y in range(self.height):
+            row = []
+            for x in range(self.width):
+                row.append(self.get_at((x, y)))
+            image.append(row)
+        self.restore_image = image
 
     def get_copy(self):
         new_data = self.__copy_data()
@@ -132,6 +142,26 @@ class ATIImage(object):
     def get_at_screen_position(self, x, y):
         # get colorvalue based on a screen position
         return self.data[y - self.top_left[1]][x - self.top_left[0]]
+
+    def get_histogram(self, step, band):
+        x_points = []
+        y_points = []
+        steps = int(round(255 / step))
+        x_point = 0
+        points_count = self.width * self.height
+
+        for i in range(steps + 1):
+            y_points.append(0)
+            x_points.append(x_point)
+            x_point += step
+        for row in self.data:
+            for col in row:
+                y_points[int(math.trunc(col[band] / step))] += 1
+
+        for t in range(256):
+            y_points[t] /= points_count
+
+        return y_points, x_points
 
     #
     #   Setters
@@ -425,26 +455,10 @@ class ATIImage(object):
                     self.top_left[1] < y < self.top_left[1] + self.height:
                 return True
 
-    def get_histogram(self, step, band):
-        x_points = []
-        y_points = []
-        steps = int(round(255 / step))
-        x_point = 0
-        points_count = self.width * self.height
-
-
-        for i in range(steps + 1):
-            y_points.append(0)
-            x_points.append(x_point)
-            x_point += step
-        for row in self.data:
-            for col in row:
-                y_points[int(math.trunc(col[band] / step))] += 1
-
-        for t in range(256):
-            y_points[t] /= points_count
-
-        return y_points, x_points
+    def restore_data(self):
+        for y in range(self.height):
+            for x in range(self.width):
+                self.set_at((x, y), self.restore_image[y][x])
 
 
 class ATIColor:
