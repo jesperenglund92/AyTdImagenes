@@ -424,6 +424,7 @@ class ATIImage(object):
             if self.top_left[0] < x < self.top_left[0] + self.width and \
                     self.top_left[1] < y < self.top_left[1] + self.height:
                 return True
+
     def get_histogram(self, step, band):
         x_points = []
         y_points = []
