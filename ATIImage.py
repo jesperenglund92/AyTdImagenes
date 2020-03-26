@@ -18,6 +18,7 @@ class ATIImage(object):
         self.active = active
         self.magic_num = None
         self.max_gray_level = None
+        self.id = None
 
     #
     #   Getters
@@ -417,12 +418,19 @@ class ATIImage(object):
                 color = self.get_at((x, y))
                 self.set_at((x, y), (255 - color[0], 255 - color[1], 255 - color[2]))
 
+    def collidepoint(self, x, y):
+        # check if arguments x and why "collides" on image
+        if self.values_set:
+            if self.top_left[0] < x < self.top_left[0] + self.width and \
+                    self.top_left[1] < y < self.top_left[1] + self.height:
+                return True
     def get_histogram(self, step, band):
         x_points = []
         y_points = []
         steps = int(round(255 / step))
         x_point = 0
         points_count = self.width * self.height
+
 
         for i in range(steps + 1):
             y_points.append(0)
@@ -507,7 +515,7 @@ class ATIColor:
         s = hsv_color[1]
         v = round(hsv_color[2])
 
-        f, p, q, t, i = 0, 0, 0, 0, 0
+        # f, p, q, t, i = 0, 0, 0, 0, 0
 
         if s == 0:
             if h == "n/a":
@@ -564,7 +572,7 @@ class ATIColor:
 
     @classmethod
     def int_to_color(cls, color_num):
-        r, g, b = 0, 0, 0
+        # r, g, b = 0, 0, 0
         divisor = 256 * 256
         b = color_num // divisor
         rest = color_num % divisor
@@ -572,7 +580,6 @@ class ATIColor:
         g = rest // divisor
         r = rest % divisor
         return [r, g, b]
-
 
     @classmethod
     def grey_degrade(cls, x, width):

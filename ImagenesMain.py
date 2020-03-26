@@ -37,6 +37,7 @@ class Window(Frame):
 
         self.edit_menu = Menu(self.menu)
         # self.edit_menu.add_command(label="Copy", command=self.copy_window)
+        self.edit_menu.add_command(label="Reset Image", command=reset_image)
         self.edit_menu.add_command(label="Operations", command=operations_window)
         self.edit_menu.add_command(label="Threshold Image", command=threshold_window)
         self.edit_menu.add_command(label="Equalize Image", command=equalize_histogram)
@@ -174,6 +175,12 @@ class Window(Frame):
 #   Filters
 #
 
+def reset_image():
+    global editableImage
+    editableImage.data = originalImage.data
+    draw_ati_image(editableImage)
+
+
 def set_edge_level():
     window = Tk()
     window.focus_set()
@@ -219,9 +226,9 @@ def redraw_img(img, filtered_image):
 
 def edge_enhance(level):
     level = float(level)
-    img = np.array(originalImage.data)[:, :, 0]
-    h_x = np.matrix([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
-    h_y = np.matrix([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
+    img = np.array(editableImage.data)[:, :, 0]
+    h_x = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
+    h_y = np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
     size = 3
     pad = int((size - 1) / 2)
     g_x = convolve_func_avg(img, h_x, pad, size)
@@ -238,7 +245,7 @@ def filter_image_gauss(size, sigma):
     sigma = float(sigma)
     n_size = (size - 1) / 2
     pad = int((size - 1) / 2)
-    img = np.array(originalImage.data)[:, :, 0]
+    img = np.array(editableImage.data)[:, :, 0]
     x, y = np.mgrid[-n_size:n_size + 1, -n_size:n_size + 1]
     k = 1 / (2 * math.pi * sigma ** 2)
     gauss_kernel = k * np.exp(-(x ** 2 + y ** 2) / (2 * sigma ** 2))
@@ -249,9 +256,9 @@ def filter_image_gauss(size, sigma):
 
 def filter_image_mdnp():
     size = 3
-    mask = np.matrix([[1, 2, 1], [2, 4, 2], [1, 2, 1]])
+    mask = np.array([[1, 2, 1], [2, 4, 2], [1, 2, 1]])
     pad = int((size - 1) / 2)
-    img = np.array(originalImage.data)[:, :, 0]
+    img = np.array(editableImage.data)[:, :, 0]
     mdn = convolve_func_mdnp(img, mask, pad, size)
     redraw_img(img, mdn)
 
@@ -259,7 +266,7 @@ def filter_image_mdnp():
 def filter_image_mdn(size):
     size = int(size)
     pad = int((size - 1) / 2)
-    img = np.array(originalImage.data)[:, :, 0]
+    img = np.array(editableImage.data)[:, :, 0]
     mdn = convolve_func_mdn(img, pad, size)
     redraw_img(img, mdn)
 
@@ -270,7 +277,7 @@ def filter_image_avg(size):
     k = 1 / (size ** 2)
     mask = k * mask
     pad = int((size - 1) / 2)
-    img = np.array(originalImage.data)[:, :, 0]
+    img = np.array(editableImage.data)[:, :, 0]
     avg = convolve_func_avg(img, mask, pad, size)
     redraw_img(img, avg)
 
@@ -548,8 +555,12 @@ class RawWindow:
         editableImage.height = height
         editableImage.width = width
         editableImage.data = image
+        editableImage.max_gray_level = np.max(editableImage.data)
 
         originalImage = editableImage.get_copy()
+        originalImage.editable = False
+        originalImage.id = 1
+
         draw_images()
         file.close()
 
@@ -662,7 +673,8 @@ def save_raw(file):
     file = open(file.name, "wb")
     for y in range(height):
         for x in range(width):
-            file.write(int.to_bytes(image.get_at((x, y))[0], length=1, byteorder="big"))
+            val = int(image.get_at((x, y))[0])
+            file.write(int.to_bytes(val, length=1, byteorder="big"))
     file.close()
     messagebox.showinfo("File was successfully save", "The file is in: " + file.name)
 
@@ -680,7 +692,8 @@ def save_pgm(file):
 
     for y in range(height):
         for x in range(width):
-            file.write(int.to_bytes(image.get_at((x, y))[0], length=1, byteorder="big"))
+            val = int(image.get_at((x, y))[0])
+            file.write(int.to_bytes(val, length=1, byteorder="big"))
     file.close()
 
     messagebox.showinfo("File was successfully save", "The file is in: " + file.name)
@@ -700,9 +713,12 @@ def save_ppm(file):
 
     for y in range(height):
         for x in range(width):
-            file.write(int.to_bytes(image.get_at((x, y))[0], length=1, byteorder="big"))
-            file.write(int.to_bytes(image.get_at((x, y))[1], length=1, byteorder="big"))
-            file.write(int.to_bytes(image.get_at((x, y))[2], length=1, byteorder="big"))
+            r_val = int(image.get_at((x, y))[0])
+            g_val = int(image.get_at((x, y))[1])
+            b_val = int(image.get_at((x, y))[2])
+            file.write(int.to_bytes(r_val, length=1, byteorder="big"))
+            file.write(int.to_bytes(g_val, length=1, byteorder="big"))
+            file.write(int.to_bytes(b_val, length=1, byteorder="big"))
     file.close()
     messagebox.showinfo("File was successfully save", "The file is in: " + file.name)
     pass
@@ -1277,7 +1293,7 @@ def equalize_histogram():
     flat = image.flatten()
     image_new = cs[flat]
     image_new = np.reshape(image_new, image.shape)
-    editableImage.data = image_new
+    editableImage.data = image_new.astype("uint32")
     draw_ati_image(editableImage)
 
 
@@ -1305,7 +1321,7 @@ def normalize(cum_sum_pixel):
 def get_image_by_id(image_id):
     if image_id == 0:
         return editableImage
-    if image_id == 1:
+    elif image_id == 1:
         return originalImage
     raise Exception("Not valid image")
 
@@ -1467,10 +1483,7 @@ def main():
 
     done = False
     while not done:
-        try:
-            app.update()
-        except:
-            print("dialog error")
+        app.update()
         if get_input():
             done = True
         pygame.display.flip()
@@ -1494,7 +1507,9 @@ is_selection_active = False
 last_action = None
 
 editableImage = ATIImage(editable=True)
-originalImage = None
+editableImage.id = 0
+originalImage = ATIImage()
+originalImage.id = 1
 
 images.append(editableImage)
 images.append(originalImage)
