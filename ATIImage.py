@@ -18,6 +18,7 @@ class ATIImage(object):
         self.active = active
         self.magic_num = None
         self.max_gray_level = None
+        self.id = None
 
     #
     #   Getters

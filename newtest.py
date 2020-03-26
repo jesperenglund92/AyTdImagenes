@@ -426,7 +426,9 @@ isSelectionActive = False
 lastaction = None
 
 editableImage = ATIImage(editable=True)
+editableImage.id = 0
 originalImage = ATIImage()
+originalImage.id = 1
 
 images.append(editableImage)
 images.append(originalImage)

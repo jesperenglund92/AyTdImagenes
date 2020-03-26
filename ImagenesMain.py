@@ -176,8 +176,8 @@ class Window(Frame):
 #
 
 def reset_image():
-    imgdata = originalImage.data
-    editableImage.data = imgdata
+    global editableImage
+    editableImage.data = originalImage.data
     draw_ati_image(editableImage)
 
 
@@ -227,8 +227,8 @@ def redraw_img(img, filtered_image):
 def edge_enhance(level):
     level = float(level)
     img = np.array(editableImage.data)[:, :, 0]
-    h_x = np.matrix([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
-    h_y = np.matrix([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
+    h_x = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
+    h_y = np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
     size = 3
     pad = int((size - 1) / 2)
     g_x = convolve_func_avg(img, h_x, pad, size)
@@ -256,7 +256,7 @@ def filter_image_gauss(size, sigma):
 
 def filter_image_mdnp():
     size = 3
-    mask = np.matrix([[1, 2, 1], [2, 4, 2], [1, 2, 1]])
+    mask = np.array([[1, 2, 1], [2, 4, 2], [1, 2, 1]])
     pad = int((size - 1) / 2)
     img = np.array(editableImage.data)[:, :, 0]
     mdn = convolve_func_mdnp(img, mask, pad, size)
@@ -558,6 +558,9 @@ class RawWindow:
         editableImage.max_gray_level = np.max(editableImage.data)
 
         originalImage = editableImage.get_copy()
+        originalImage.editable = False
+        originalImage.id = 1
+
         draw_images()
         file.close()
 
@@ -1333,7 +1336,7 @@ def normalize(cum_sum_pixel):
 def get_image_by_id(image_id):
     if image_id == 0:
         return editableImage
-    if image_id == 1:
+    elif image_id == 1:
         return originalImage
     raise Exception("Not valid image")
 
@@ -1495,10 +1498,7 @@ def main():
 
     done = False
     while not done:
-        try:
-            app.update()
-        except:
-            print("dialog error")
+        app.update()
         if get_input():
             done = True
         pygame.display.flip()
@@ -1522,7 +1522,9 @@ is_selection_active = False
 last_action = None
 
 editableImage = ATIImage(editable=True)
-originalImage = None
+editableImage.id = 0
+originalImage = ATIImage()
+originalImage.id = 1
 
 images.append(editableImage)
 images.append(originalImage)
