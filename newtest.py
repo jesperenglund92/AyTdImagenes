@@ -343,7 +343,7 @@ def open_raw():
 def drawImages():
     global editableImage
     global originalImage
-    editableImage.topleft = [20, 20]
+    editableImage.top_left = [20, 20]
     # originalImage.topleft = [40 + originalImage.width, 20]
     originalImage.set_top_left([40 + originalImage.width, 20])
     editableImage.active = True
@@ -360,7 +360,7 @@ def drawATIImage(image):
     surface = pygame.display.get_surface()
     for x in range(width):
         for y in range(height):
-            surface.set_at((x + image.topleft[0], y + image.topleft[1]), image.get_at([x, y]))
+            surface.set_at((x + image.top_left[0], y + image.top_left[1]), image.get_at([x, y]))
 
 
 def quit_callback():

@@ -668,7 +668,8 @@ def save_raw(file):
     file = open(file.name, "wb")
     for y in range(height):
         for x in range(width):
-            file.write(int.to_bytes(image.get_at((x, y))[0], length=1, byteorder="big"))
+            val = int(image.get_at((x, y))[0])
+            file.write(int.to_bytes(val, length=1, byteorder="big"))
     file.close()
     messagebox.showinfo("File was successfully save", "The file is in: " + file.name)
 
@@ -686,7 +687,8 @@ def save_pgm(file):
 
     for y in range(height):
         for x in range(width):
-            file.write(int.to_bytes(image.get_at((x, y))[0], length=1, byteorder="big"))
+            val = int(image.get_at((x, y))[0])
+            file.write(int.to_bytes(val, length=1, byteorder="big"))
     file.close()
 
     messagebox.showinfo("File was successfully save", "The file is in: " + file.name)
@@ -706,9 +708,12 @@ def save_ppm(file):
 
     for y in range(height):
         for x in range(width):
-            file.write(int.to_bytes(image.get_at((x, y))[0], length=1, byteorder="big"))
-            file.write(int.to_bytes(image.get_at((x, y))[1], length=1, byteorder="big"))
-            file.write(int.to_bytes(image.get_at((x, y))[2], length=1, byteorder="big"))
+            r_val = int(image.get_at((x, y))[0])
+            g_val = int(image.get_at((x, y))[1])
+            b_val = int(image.get_at((x, y))[2])
+            file.write(int.to_bytes(r_val, length=1, byteorder="big"))
+            file.write(int.to_bytes(g_val, length=1, byteorder="big"))
+            file.write(int.to_bytes(b_val, length=1, byteorder="big"))
     file.close()
     messagebox.showinfo("File was successfully save", "The file is in: " + file.name)
     pass
@@ -1298,12 +1303,12 @@ def equalize_histogram():
     flat = image.flatten()
     image_new = cs[flat]
     image_new = np.reshape(image_new, image.shape)
-    editableImage.data = image_new
+    editableImage.data = image_new.astype("uint32")
     draw_ati_image(editableImage)
 
 
 def cum_sum(hist):
-    hist = iter(hist)
+    hist = iter(hist[:5])
     cum_array = [next(hist)]
     for i in hist:
         cum_array.append(cum_array[-1] + i)
