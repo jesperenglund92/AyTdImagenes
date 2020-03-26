@@ -176,7 +176,8 @@ class Window(Frame):
 #
 
 def reset_image():
-    editableImage.data = originalImage.data
+    imgdata = originalImage.data
+    editableImage.data = imgdata
     draw_ati_image(editableImage)
 
 
@@ -554,6 +555,7 @@ class RawWindow:
         editableImage.height = height
         editableImage.width = width
         editableImage.data = image
+        editableImage.max_gray_level = np.max(editableImage.data)
 
         originalImage = editableImage.get_copy()
         draw_images()
@@ -1308,7 +1310,7 @@ def equalize_histogram():
 
 
 def cum_sum(hist):
-    hist = iter(hist[:5])
+    hist = iter(hist)
     cum_array = [next(hist)]
     for i in hist:
         cum_array.append(cum_array[-1] + i)
