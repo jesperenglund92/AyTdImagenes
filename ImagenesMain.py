@@ -1103,8 +1103,10 @@ class NewWhiteSquare:
         app.enable_image_menu()
         self.close_window()
 
+
 def new_degrade_image():
     NewDegrade()
+
 
 class NewDegrade:
     def __init__(self):
@@ -1252,7 +1254,7 @@ def histogram_window():
     """Following libraries needed:
     import matplotlib.pyplot as plt
     import math"""
-    y_vals, x_vals = get_histogram(editableImage.data, 1, 0)  # or get editableimage in a more dynamic way
+    y_vals, x_vals = editableImage.get_histogram(1, 0)  # or get editableimage in a more dynamic way
     plt.figure(figsize=[10, 8])
     plt.bar(x_vals, y_vals, width=5, color='#0504aa', alpha=0.7)
 
@@ -1266,24 +1268,9 @@ def histogram_window():
     plt.show()
 
 
-def get_histogram(img_data, step, band):
-    x_points = []
-    y_points = []
-    steps = int(round(255 / step))
-    x_point = 0
-
-    for i in range(steps + 1):
-        y_points.append(0)
-        x_points.append(x_point)
-        x_point += step
-    for row in img_data:
-        for col in row:
-            y_points[int(math.trunc(col[band] / step))] += 1
-    return y_points, x_points
-
-
 def equalize_histogram():
-    y_values, x_values = get_histogram(editableImage.data, 1, 0)
+    # y_values, x_values = get_histogram(editableImage.data, 1, 0)
+    y_values, x_values = editableImage.get_histogram(1, 0)
     cs = cum_sum(y_values)
     cs = normalize(cs)
     image = np.asarray(editableImage.data)

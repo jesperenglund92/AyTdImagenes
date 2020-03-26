@@ -295,14 +295,8 @@ class ATIImage(object):
         max_value = self.max_gray_level
         min_value = 0
         if array[0] <= threshold:
-            array[0] = min_value
-            array[1] = min_value
-            array[2] = min_value
-        else:
-            array[0] = max_value
-            array[1] = max_value
-            array[2] = max_value
-        return array
+            return [0, 0, 0]
+        return [255, 255, 255]
 
     def threshold_function(self, threshold):
         if not isinstance(threshold, int):
@@ -422,6 +416,26 @@ class ATIImage(object):
             for y in range(self.height):
                 color = self.get_at((x, y))
                 self.set_at((x, y), (255 - color[0], 255 - color[1], 255 - color[2]))
+
+    def get_histogram(self, step, band):
+        x_points = []
+        y_points = []
+        steps = int(round(255 / step))
+        x_point = 0
+        points_count = self.width * self.height
+
+        for i in range(steps + 1):
+            y_points.append(0)
+            x_points.append(x_point)
+            x_point += step
+        for row in self.data:
+            for col in row:
+                y_points[int(math.trunc(col[band] / step))] += 1
+
+        for t in range(256):
+            y_points[t] /= points_count
+
+        return y_points, x_points
 
 
 class ATIColor:
