@@ -176,8 +176,6 @@ class Window(Frame):
 #
 
 def reset_image():
-    global editableImage
-    # editableImage.data = originalImage.data
     editableImage.restore_data()
     draw_ati_image(editableImage)
 
@@ -1214,12 +1212,12 @@ def draw_selection(x, y, x2, y2, selection_color):
         surface.set_at((right, top + y), selection_color)
 
 
-def draw_selection_rectangle(selection, top_left, botton_rigth):
+def draw_selection_rectangle(selection, top_left, bottom_right):
     global surface
     top = top_left[1]
     left = top_left[0]
-    bottom = botton_rigth[1]
-    right = botton_rigth[0]
+    bottom = bottom_right[1]
+    right = bottom_right[0]
     image = get_image_by_id(selection.image)
     pygame.display.get_surface()
     for x in range(right - left):
@@ -1236,10 +1234,18 @@ def draw_pre_image_selection(selection):
     draw_selection_rectangle(selection, tl, br)
 
 
-def draw_image_selection(selection):
-    tl = selection.get_top_left()
-    br = selection.get_botton_right()
-    draw_selection_rectangle(selection, tl, br)
+def draw_image_selection(selection, color):
+    top = min(selection.y, selection.new_y)
+    left = min(selection.x, selection.new_x)
+    right = max(selection.x, selection.new_x)
+    bottom = max(selection.y, selection.new_y)
+    surface = pygame.display.get_surface()
+    for x in range(right - left):
+        surface.set_at((x + left, top), color)
+        surface.set_at((x + left, bottom), color)
+    for y in range(bottom - top):
+        surface.set_at((left, top + y), color)
+        surface.set_at((right, top + y), color)
 
 
 def draw_ati_image(image):
@@ -1364,7 +1370,11 @@ def update_selection_values(selection):
 
 
 def make_selection(selection):
-    draw_pre_image_selection(selection)
+    #draw_pre_image_selection(selection)
+    draw_selection(selection.x, selection.y, selection.new_x, selection.new_y, (0, 0, 0))
+    for img in images:
+        draw_ati_image(img)
+        print(img.top_left)
     draw_selection(selection.x, selection.y, selection.new_x, selection.new_y, (0, 0, 255))
 
     # rect = (x, y, x2-x, y2-y)
@@ -1404,9 +1414,10 @@ def copy_selection():
         if img.values_set:
             if not img.editable:
                 data = image_data_in_selection(img)
-                image = ATIImage(data, len(data[0]), len(data), "type", (300, 50), True, True)
-                images.append(image)
-                draw_ati_image(image)
+                editableImage.data = data
+                """image = ATIImage(data, len(data[0]), len(data), "type", (300, 50), True, True)
+                images.append(image)"""
+                draw_ati_image(editableImage)
 
 
 #
@@ -1414,9 +1425,10 @@ def copy_selection():
 #
 
 def handle_mouse_input(mouse_pos, image_click):
-    image = get_image_by_id(image_click)
+    """image = get_image_by_id(image_click)
     pos_display = image.get_pos_display(mouse_pos)
-    app.set_value_entry(pos_display[0], pos_display[1], image.get_at_display(mouse_pos))
+    app.set_value_entry(pos_display[0], pos_display[1], image.get_at_display(mouse_pos))"""
+    pass
 
 
 def get_input():
@@ -1436,36 +1448,30 @@ def get_input():
                 mouse_position = pygame.mouse.get_pos()
                 image_click = is_click_in_images(mouse_position)
 
-                if editableImage.active and image_click != -1:
-                    if is_selection_active:
-                        draw_image_selection(new_selection)
+                if is_selection_active:
+                    for img in images:
+                        draw_ati_image(img)
+                        draw_selection(new_selection.x, new_selection.y, new_selection.new_x, new_selection.new_y, (0, 0, 0))
 
-                    new_selection.set_start_pos(mouse_position)
-                    new_selection.set_image(image_click)
+                new_selection.set_start_pos(mouse_position)
+                new_selection.set_image(image_click)
 
-                    update_selection_values(new_selection)
+                # update_selection_values(new_selection)
 
-                    dragging = True
-                    is_selection_active = True
-                    handle_mouse_input(mouse_position, image_click)
+                dragging = True
+                is_selection_active = True
+                handle_mouse_input(mouse_position, image_click)
 
                 last_action = "mousedown"
         elif event.type == MOUSEBUTTONUP:
             if event.button == 1:
-                if last_action != "mousemotion":
-                    is_selection_active = False
-                    update_selection_values(new_selection)
                 dragging = False
             last_action = "mouseup"
         elif event.type == MOUSEMOTION:
             if dragging:
                 mouse_position = pygame.mouse.get_pos()
-                if is_click_in_images(mouse_position) == new_selection.image:
-                    new_selection.set_new_pos(mouse_position)
-                    make_selection(new_selection)
-                    update_selection_values(new_selection)
-                else:
-                    pass
+                new_selection.set_new_pos(mouse_position)
+                make_selection(new_selection)
             last_action = "mousemotion"
         sys.stdout.flush()  # get stuff to the console
     return False

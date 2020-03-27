@@ -321,10 +321,11 @@ class ATIImage(object):
         self.dynamic_compression()
 
     # Threshold Function
-    def __threshold_assign(self, array, threshold):
+    @staticmethod
+    def __threshold_assign(array, threshold):
         # for x in range(3):
-        max_value = self.max_gray_level
-        min_value = 0
+        # max_value = self.max_gray_level
+        # min_value = 0
         if array[0] <= threshold:
             return [0, 0, 0]
         return [255, 255, 255]
