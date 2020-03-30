@@ -450,6 +450,7 @@ class NoiseWindow:
         if gamma == '':
             raise Exception("Gamma not set")
         image.noise_exponential(percent, gamma)
+        print(image.data[0])
         draw_ati_image(image)
         self.delete_window()
 
@@ -556,10 +557,14 @@ class RawWindow:
         editableImage.data = image
         editableImage.max_gray_level = 255
         editableImage.set_restore_image()
+        editableImage.values_set = True
+        editableImage.image_type = ".raw"
 
         originalImage = editableImage.get_copy()
         originalImage.editable = False
         originalImage.id = 1
+        originalImage.values_set = True
+        originalImage.image_type = ".raw"
 
         draw_images()
         file.close()
@@ -816,7 +821,7 @@ class OperationsWindow:
         if gamma <= 0 or gamma == 1 or gamma >= 2:
             raise Exception("Invalid Gamma")
         editableImage.gamma_function(gamma)
-        pass
+        draw_ati_image(editableImage)
 
 
 def add_images(image_id_1=0, image_id_2=1):
@@ -1350,10 +1355,12 @@ def is_click_in_images(pos):
 #   Selection
 #
 
-
 def update_selection_values(selection):
     app.selection_pixel_count["text"] = selection.get_pixel_count()
-    image_id = selection.image
+    image_id = -1
+    for image in images:
+        if image.collidepoint(selection.new_x, selection.new_y):
+            image_id = image.id
     if image_id != -1:
         image_selected = get_image_by_id(image_id)
         if image_selected.image_color_type() == 'g':
@@ -1371,10 +1378,12 @@ def update_selection_values(selection):
 
 def make_selection(selection):
     #draw_pre_image_selection(selection)
-    draw_selection(selection.x, selection.y, selection.new_x, selection.new_y, (0, 0, 0))
-    for img in images:
-        draw_ati_image(img)
-        print(img.top_left)
+    surface = pygame.display.get_surface()
+    surface.fill((0, 0, 0))
+    orig = get_image_by_id(1)
+    edit = get_image_by_id(0)
+    draw_ati_image(orig)
+    draw_ati_image(edit)
     draw_selection(selection.x, selection.y, selection.new_x, selection.new_y, (0, 0, 255))
 
     # rect = (x, y, x2-x, y2-y)
@@ -1449,14 +1458,16 @@ def get_input():
                 image_click = is_click_in_images(mouse_position)
 
                 if is_selection_active:
-                    for img in images:
-                        draw_ati_image(img)
-                        draw_selection(new_selection.x, new_selection.y, new_selection.new_x, new_selection.new_y, (0, 0, 0))
+                    draw_selection(new_selection.x, new_selection.y, new_selection.new_x, new_selection.new_y, (0, 0, 0))
+                    orig = get_image_by_id(1)
+                    edit = get_image_by_id(0)
+                    draw_ati_image(orig)
+                    draw_ati_image(edit)
 
                 new_selection.set_start_pos(mouse_position)
                 new_selection.set_image(image_click)
 
-                # update_selection_values(new_selection)
+                update_selection_values(new_selection)
 
                 dragging = True
                 is_selection_active = True
@@ -1472,6 +1483,7 @@ def get_input():
                 mouse_position = pygame.mouse.get_pos()
                 new_selection.set_new_pos(mouse_position)
                 make_selection(new_selection)
+                update_selection_values(new_selection)
             last_action = "mousemotion"
         sys.stdout.flush()  # get stuff to the console
     return False

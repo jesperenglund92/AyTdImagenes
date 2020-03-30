@@ -61,8 +61,11 @@ class Selection:
         br = self.get_botton_right()
         return br[1] - tl[1] + 1
 
-    def get_pixel_count(self):
-        return self.get_width().__str__() + " x " + self.get_height().__str__()
+    def get_pixel_count(self, data):
+        if len(data) > 0:
+            return str(len(data)) + " x " + str(len(data[0]))
+        else:
+            return "0"
 
 
 class ATIRandom:
