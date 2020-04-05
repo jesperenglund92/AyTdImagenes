@@ -519,40 +519,43 @@ class RawWindow:
         self.txtWidth.grid(row=5, column=1)
         self.txtHeight.grid(row=6, column=1)
 
-def open_raw_image():
-    global editableImage
-    global originalImage
+    def open_raw_image(self):
+        global editableImage
+        global originalImage
 
-    width = int(290)
-    height = int(207)
+        width = int(self.txtWidth.get())
+        height = int(self.txtHeight.get())
 
-    file = open("testing-images/barco.raw", "rb")
-    image = []
-    surface = pygame.display.set_mode((width, height))
+        file = open(self.file.name, "rb")
+        image = []
 
-    for y in range(height):
-        tmp_list = []
-        for x in range(width):
-            image_color = int.from_bytes(file.read(1), byteorder="big")
-            tmp_list.append([image_color, image_color, image_color])
-        image.append(tmp_list)
+        for y in range(height):
+            tmp_list = []
+            for x in range(width):
+                image_color = int.from_bytes(file.read(1), byteorder="big")
+                tmp_list.append([image_color, image_color, image_color])
+            image.append(tmp_list)
 
-    editableImage.height = height
-    editableImage.width = width
-    editableImage.data = image
-    editableImage.max_gray_level = 255
-    editableImage.set_restore_image()
-    editableImage.values_set = True
-    editableImage.image_type = ".raw"
+        app.enable_image_menu()
+        self.window.destroy()
+        app.master.focus_set()
 
-    originalImage = editableImage.get_copy()
-    originalImage.editable = False
-    originalImage.id = 1
-    originalImage.values_set = True
-    originalImage.image_type = ".raw"
+        editableImage.height = height
+        editableImage.width = width
+        editableImage.data = image
+        editableImage.max_gray_level = 255
+        editableImage.set_restore_image()
+        editableImage.values_set = True
+        editableImage.image_type = ".raw"
 
-    draw_images()
-    file.close()
+        originalImage = editableImage.get_copy()
+        originalImage.editable = False
+        originalImage.id = 1
+        originalImage.values_set = True
+        originalImage.image_type = ".raw"
+
+        draw_images()
+        file.close()
 
 
 def load_pgm(file):
@@ -601,8 +604,13 @@ def load_ppm(file):
     editableImage.magic_num = magic_num
     editableImage.max_gray_level = max_val
     editableImage.set_restore_image()
+    editableImage.values_set = True
 
     originalImage = editableImage.get_copy()
+    originalImage.editable = False
+    originalImage.id = 1
+    originalImage.values_set = True
+    originalImage.image_type = ".ppm"
 
     app.enable_image_menu()
 
@@ -1183,12 +1191,23 @@ class NewDegrade:
 #   Draw
 #
 
+def draw_img_inside(tly, tlx, brx, bry):
+    for i in range(len(images)):
+        img = get_image_by_id(i)
+        for row in range(bry-tly):
+            for col in range(brx-tlx):
+                if img.collidepoint(tlx + col, tly + row):
+                    surface.set_at((tlx + col, tly + row), img.get_at_display((tlx + col, tly + row)))
+
+
+
 def draw_selection(x, y, x2, y2, selection_color):
     global surface
     top = min(y, y2)
     left = min(x, x2)
     right = max(x, x2)
     bottom = max(y, y2)
+    draw_img_inside(top, left, right, bottom)
     pygame.display.get_surface()
     for x in range(right - left):
         surface.set_at((x + left, top), selection_color)
@@ -1374,11 +1393,17 @@ def make_selection(selection):
 
 
 def image_data_in_selection(img):
-    # function returning the color_data of in-image within current selection.
+    # function returning the color_data of image within current selection.
     data = []
     y_iterator = 0
+    tl = None
+    br = None
+    tl_set = False
+    br_set = False
+    last_xy = None
     for i in range(abs(new_selection.new_y - new_selection.y)):
         row = []
+        r2 = []
         if new_selection.new_y < new_selection.y:
             y = new_selection.new_y
         else:
@@ -1390,8 +1415,16 @@ def image_data_in_selection(img):
             else:
                 x = new_selection.x
             if img.collidepoint(x + j, y + i):
+                last_xy = (x + j, y + i)
+                if not tl_set:
+                    tl = last_xy
+                    tl_set = True
+                r2.append([j + x, y + i])
                 row.append(img.get_at_screen_position(j + x, y + i))
                 x_iterator += 1
+            else:
+                if tl_set:
+                    br = last_xy
 
         if x_iterator > 0:
             y_iterator += 1
@@ -1508,7 +1541,11 @@ def main():
     root.wm_title("Tkinter window")
     root.protocol("WM_DELETE_WINDOW", quit_callback)
     surface.fill((255, 255, 255))
-    open_raw_image()
+    file = open("testing-images/Lenaclor.ppm", "rb")
+    load_ppm(file)
+    draw_images()
+    file.close()
+
     done = False
     while not done:
         app.update()

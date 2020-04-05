@@ -23,6 +23,10 @@ class Selection:
         self.new_y = self.y
         self.prev_x = 0
         self.prev_y = 0
+        self.tlx_i = 0
+        self.tly_i = 0
+        self.brx_i = 0
+        self.bry_i = 0
 
     def set_start_pos(self, start_pos):
         self.x = start_pos[0]
