@@ -43,13 +43,13 @@ class Selection:
     def get_top_left(self):
         return [min(self.x, self.new_x), min(self.y, self.new_y)]
 
-    def get_botton_right(self):
+    def get_bottom_right(self):
         return [max(self.x, self.new_x), max(self.y, self.new_y)]
 
     def get_prev_top_left(self):
         return [min(self.x, self.prev_x), min(self.y, self.prev_y)]
 
-    def get_prev_botton_right(self):
+    def get_prev_bottom_right(self):
         return [max(self.x, self.prev_x), max(self.y, self.prev_y)]
 
     def set_image(self, image_id):
@@ -57,19 +57,39 @@ class Selection:
 
     def get_width(self):
         tl = self.get_top_left()
-        br = self.get_botton_right()
+        br = self.get_bottom_right()
         return br[0] - tl[0] + 1
 
     def get_height(self):
         tl = self.get_top_left()
-        br = self.get_botton_right()
+        br = self.get_bottom_right()
         return br[1] - tl[1] + 1
 
-    def get_pixel_count(self, data):
+    @staticmethod
+    def get_pixel_count(data):
         if len(data) > 0:
             return str(len(data)) + " x " + str(len(data[0]))
         else:
             return "0"
+
+    def get_image_within_selection(self):
+        return (self.tlx_i, self.tly_i), (self.brx_i, self.bry_i)
+
+    def set_image_within_selection(self, i_tl, i_br):
+        tlx, tly = self.get_prev_top_left()
+        brx, bry = self.get_prev_bottom_right()
+        if tlx < i_tl[0]:
+            tlx = i_tl[0]
+        if tly < i_tl[1]:
+            tly = i_tl[1]
+        if brx > i_br[0]:
+            brx = i_br[0]
+        if bry > i_br[1]:
+            bry = i_br[1]
+        self.tlx_i = tlx
+        self.tly_i = tly
+        self.brx_i = brx
+        self.bry_i = bry
 
 
 class ATIRandom:

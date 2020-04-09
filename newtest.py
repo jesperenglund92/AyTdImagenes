@@ -1207,8 +1207,6 @@ def draw_selection(x, y, x2, y2, selection_color):
     left = min(x, x2)
     right = max(x, x2)
     bottom = max(y, y2)
-    draw_img_inside(top, left, right, bottom)
-    pygame.display.get_surface()
     for x in range(right - left):
         surface.set_at((x + left, top), selection_color)
         surface.set_at((x + left, bottom), selection_color)
@@ -1232,10 +1230,24 @@ def draw_selection_rectangle(selection, top_left, bottom_right):
         surface.set_at((left, top + y), image.get_at_display((left, top + y)))
         surface.set_at((right, top + y), image.get_at_display((right, top + y)))
 
+def draw_prev_selection_outside_img(top_left, bottom_right, color):
+    top = top_left[1]
+    left = top_left[0]
+    bottom = bottom_right[1]
+    right = bottom_right[0]
+    for x in range(right - left):
+        surface.set_at((x + left, top), color)
+        surface.set_at((x + left, bottom), color)
+    for y in range(bottom - top):
+        surface.set_at((left, top + y), color)
+        surface.set_at((right, top + y), color)
+
+
 
 def draw_pre_image_selection(selection):
-    tl = selection.get_prev_top_left()
-    br = selection.get_prev_botton_right()
+    tl, br = selection.get_image_within_selection()
+    #tl = selection.get_prev_top_left()
+    #br = selection.get_prev_bottom_right()
     draw_selection_rectangle(selection, tl, br)
 
 
@@ -1380,12 +1392,21 @@ def update_selection_values(selection):
 
 def make_selection(selection):
     #draw_pre_image_selection(selection)
-    surface = pygame.display.get_surface()
-    surface.fill((0, 0, 0))
-    orig = get_image_by_id(1)
-    edit = get_image_by_id(0)
-    draw_ati_image(orig)
-    draw_ati_image(edit)
+    tl = selection.get_prev_top_left()
+    br = selection.get_prev_bottom_right()
+    #draw_prev_selection_outside_img(tl, br, (0, 0, 0))
+    for i in range(len(images)):
+        image = get_image_by_id(i)
+        draw = False
+        if image.collidepoint(selection.x, selection.y):
+            draw = True
+        if image.collidepoint(selection.new_x, selection.new_y):
+            draw = True
+        if draw:
+            selection.image = image.id
+            i_br = image.get_bottom_right()
+            selection.set_image_within_selection(image.top_left, i_br)
+            draw_pre_image_selection(selection)
     draw_selection(selection.x, selection.y, selection.new_x, selection.new_y, (0, 0, 255))
 
     # rect = (x, y, x2-x, y2-y)
@@ -1396,14 +1417,8 @@ def image_data_in_selection(img):
     # function returning the color_data of image within current selection.
     data = []
     y_iterator = 0
-    tl = None
-    br = None
-    tl_set = False
-    br_set = False
-    last_xy = None
     for i in range(abs(new_selection.new_y - new_selection.y)):
         row = []
-        r2 = []
         if new_selection.new_y < new_selection.y:
             y = new_selection.new_y
         else:
@@ -1415,16 +1430,8 @@ def image_data_in_selection(img):
             else:
                 x = new_selection.x
             if img.collidepoint(x + j, y + i):
-                last_xy = (x + j, y + i)
-                if not tl_set:
-                    tl = last_xy
-                    tl_set = True
-                r2.append([j + x, y + i])
                 row.append(img.get_at_screen_position(j + x, y + i))
                 x_iterator += 1
-            else:
-                if tl_set:
-                    br = last_xy
 
         if x_iterator > 0:
             y_iterator += 1
