@@ -1377,13 +1377,11 @@ def update_selection_values(selection):
 
 
 def make_selection(selection):
-    #draw_pre_image_selection(selection)
+    draw_pre_image_selection(selection)
     surface = pygame.display.get_surface()
     surface.fill((0, 0, 0))
     orig = get_image_by_id(1)
     edit = get_image_by_id(0)
-    draw_ati_image(orig)
-    draw_ati_image(edit)
     draw_selection(selection.x, selection.y, selection.new_x, selection.new_y, (0, 0, 255))
 
     # rect = (x, y, x2-x, y2-y)

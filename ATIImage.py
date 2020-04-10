@@ -70,7 +70,7 @@ class ATIImage(object):
         return self.top_left
 
     def get_bottom_right(self):
-        return [self.top_left[0] + self.width, self.top_left[1] + self.height]
+        return [self.top_left[0] + self.width - 1, self.top_left[1] + self.height - 1]
 
     def get_red_band(self):
         data = []
@@ -106,12 +106,20 @@ class ATIImage(object):
         return pos[0] - self.top_left[0], pos[1] - self.top_left[1]
 
     def get_at_display(self, pos):
-        x = pos[0] - self.top_left[0] - 1
-        y = pos[1] - self.top_left[1] - 1
-        """if not (0 <= x < self.width):
+        x = pos[0] - self.top_left[0]
+        y = pos[1] - self.top_left[1]
+        if not (0 <= x < self.width):
+            print("x")
+            print(pos[0])
+            print(self.top_left[0])
+            print(x)
             raise Exception("Invalid position")
         if not (0 <= y < self.height):
-            raise Exception("Invalid position")"""
+            print("y")
+            print(pos[1])
+            print(self.top_left[1])
+            print(y)
+            raise Exception("Invalid position")
         return self.get_at((x, y))
 
     def __get_band_average_display(self, data, band):
@@ -170,15 +178,18 @@ class ATIImage(object):
     def set_at_display(self, pos, color):
         x = pos[0] - self.top_left[0] - 1
         y = pos[1] - self.top_left[1] - 1
-        if not (0 <= x <= self.width - 1):
+        """if not (0 <= x <= self.width - 1):
             raise Exception("Invalid position")
         if not (0 <= y <= self.height - 1):
-            raise Exception("Invalid position")
+            raise Exception("Invalid position")"""
         self.set_at((x, y), color)
 
     def set_data(self, data):
         self.data = data
 
+
+    def set_inactive(self):
+        self.active = False
     #
     #   Condition Statements
     #

@@ -27,6 +27,7 @@ class Selection:
         self.tly_i = 0
         self.brx_i = 0
         self.bry_i = 0
+        self.points_outside = []
 
     def set_start_pos(self, start_pos):
         self.x = start_pos[0]
@@ -43,8 +44,14 @@ class Selection:
     def get_top_left(self):
         return [min(self.x, self.new_x), min(self.y, self.new_y)]
 
+    def get_top_right(self):
+        return [max(self.x, self.new_x), min(self.y, self.new_y)]
+
     def get_bottom_right(self):
         return [max(self.x, self.new_x), max(self.y, self.new_y)]
+
+    def get_bottom_left(self):
+        return [min(self.x, self.new_x), max(self.y, self.new_y)]
 
     def get_prev_top_left(self):
         return [min(self.x, self.prev_x), min(self.y, self.prev_y)]
@@ -75,21 +82,30 @@ class Selection:
     def get_image_within_selection(self):
         return (self.tlx_i, self.tly_i), (self.brx_i, self.bry_i)
 
-    def set_image_within_selection(self, i_tl, i_br):
+    def set_image_within_selection(self, i_tl, i_br, i_width, i_height):
         tlx, tly = self.get_prev_top_left()
         brx, bry = self.get_prev_bottom_right()
+        if tlx >= i_tl[0] + i_width:
+            tlx = i_tl[0] + i_width - 1
         if tlx < i_tl[0]:
             tlx = i_tl[0]
+        if tly >= i_tl[1] + i_height:
+            tly = i_tl[1] + i_height - 1
         if tly < i_tl[1]:
             tly = i_tl[1]
+        if brx <= i_br[0] - i_width:
+            brx = i_br[0] - i_width + 1
         if brx > i_br[0]:
             brx = i_br[0]
+        if bry <= i_br[1] - i_height:
+            bry = i_br[1] - i_height + 1
         if bry > i_br[1]:
             bry = i_br[1]
         self.tlx_i = tlx
         self.tly_i = tly
         self.brx_i = brx
         self.bry_i = bry
+
 
 
 class ATIRandom:

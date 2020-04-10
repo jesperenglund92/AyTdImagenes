@@ -1029,7 +1029,7 @@ class NewWhiteCircle:
             data.append(row)
 
         image = ATIImage(data=data, width=width, height=height, image_type='.ppm',
-                         active=True, editable=True, top_left=top_left)
+                         active=False, editable=True, top_left=top_left)
         image.max_gray_level = 255
         image.magic_num = 'P6'
         editableImage = image
@@ -1106,7 +1106,7 @@ class NewWhiteSquare:
                     row.append((255, 255, 255))
             data.append(row)
 
-        image = ATIImage(data=data, width=width, height=height, image_type='.ppm', active=True,
+        image = ATIImage(data=data, width=width, height=height, image_type='.ppm', active=False,
                          editable=True, top_left=top_left)
         image.max_gray_level = 255
         image.magic_num = 'P6'
@@ -1171,7 +1171,7 @@ class NewDegrade:
                 row.append(function(x, width))
             data.append(row)
 
-        image = ATIImage(data=data, width=width, height=height, image_type='.ppm', active=True,
+        image = ATIImage(data=data, width=width, height=height, image_type='.ppm', active=False,
                          editable=True, top_left=top_left)
         image.max_gray_level = 255
         image.magic_num = 'P6'
@@ -1191,15 +1191,6 @@ class NewDegrade:
 #   Draw
 #
 
-def draw_img_inside(tly, tlx, brx, bry):
-    for i in range(len(images)):
-        img = get_image_by_id(i)
-        for row in range(bry-tly):
-            for col in range(brx-tlx):
-                if img.collidepoint(tlx + col, tly + row):
-                    surface.set_at((tlx + col, tly + row), img.get_at_display((tlx + col, tly + row)))
-
-
 
 def draw_selection(x, y, x2, y2, selection_color):
     global surface
@@ -1215,20 +1206,20 @@ def draw_selection(x, y, x2, y2, selection_color):
         surface.set_at((right, top + y), selection_color)
 
 
-def draw_selection_rectangle(selection, top_left, bottom_right):
+def draw_selection_rectangle(top_left, bottom_right, image_id):
     global surface
     top = top_left[1]
     left = top_left[0]
     bottom = bottom_right[1]
     right = bottom_right[0]
-    image = get_image_by_id(selection.image)
-    pygame.display.get_surface()
+    image = get_image_by_id(image_id)
     for x in range(right - left):
         surface.set_at((x + left, top), image.get_at_display((x + left, top)))
         surface.set_at((x + left, bottom), image.get_at_display((x + left, bottom)))
     for y in range(bottom - top):
         surface.set_at((left, top + y), image.get_at_display((left, top + y)))
         surface.set_at((right, top + y), image.get_at_display((right, top + y)))
+
 
 def draw_prev_selection_outside_img(top_left, bottom_right, color):
     top = top_left[1]
@@ -1243,26 +1234,9 @@ def draw_prev_selection_outside_img(top_left, bottom_right, color):
         surface.set_at((right, top + y), color)
 
 
-
-def draw_pre_image_selection(selection):
+def draw_pre_image_selection(selection, image_id):
     tl, br = selection.get_image_within_selection()
-    #tl = selection.get_prev_top_left()
-    #br = selection.get_prev_bottom_right()
-    draw_selection_rectangle(selection, tl, br)
-
-
-def draw_image_selection(selection, color):
-    top = min(selection.y, selection.new_y)
-    left = min(selection.x, selection.new_x)
-    right = max(selection.x, selection.new_x)
-    bottom = max(selection.y, selection.new_y)
-    surface = pygame.display.get_surface()
-    for x in range(right - left):
-        surface.set_at((x + left, top), color)
-        surface.set_at((x + left, bottom), color)
-    for y in range(bottom - top):
-        surface.set_at((left, top + y), color)
-        surface.set_at((right, top + y), color)
+    draw_selection_rectangle(tl, br, image_id)
 
 
 def draw_ati_image(image):
@@ -1282,7 +1256,7 @@ def draw_images():
     global surface
     editableImage.set_top_left((20, 20))
     originalImage.set_top_left((40 + originalImage.width, 20))
-    editableImage.active = True
+    editableImage.active = False
     originalImage.active = False
     pygame.display.set_mode((60 + editableImage.width * 2, 40 + editableImage.height))
     surface.fill((0, 0, 0))
@@ -1390,23 +1364,34 @@ def update_selection_values(selection):
     return
 
 
+def selection_on_image(selection, image):
+    tl = selection.get_top_left()
+    tr = selection.get_top_right()
+    bl = selection.get_bottom_left()
+    br = selection.get_bottom_right()
+    tlcp = image.collidepoint(tl[0], tl[1])
+    trcp = image.collidepoint(tr[0], tr[1])
+    blcp = image.collidepoint(bl[0], bl[1])
+    brcp = image.collidepoint(br[0], br[1])
+    if tlcp or trcp or blcp or brcp:
+        return True
+
+
+
 def make_selection(selection):
     #draw_pre_image_selection(selection)
     tl = selection.get_prev_top_left()
     br = selection.get_prev_bottom_right()
-    #draw_prev_selection_outside_img(tl, br, (0, 0, 0))
+    draw_prev_selection_outside_img(tl, br, (0, 0, 0))
     for i in range(len(images)):
         image = get_image_by_id(i)
-        draw = False
-        if image.collidepoint(selection.x, selection.y):
-            draw = True
-        if image.collidepoint(selection.new_x, selection.new_y):
-            draw = True
-        if draw:
+        if selection_on_image(selection, image):
+            image.active = True
+        if image.active:
             selection.image = image.id
             i_br = image.get_bottom_right()
-            selection.set_image_within_selection(image.top_left, i_br)
-            draw_pre_image_selection(selection)
+            selection.set_image_within_selection(image.top_left, i_br, image.width, image.height)
+            draw_pre_image_selection(selection, image.id)
     draw_selection(selection.x, selection.y, selection.new_x, selection.new_y, (0, 0, 255))
 
     # rect = (x, y, x2-x, y2-y)
@@ -1472,6 +1457,11 @@ def copy_selection():
             done = True
 
 
+def set_images_inactive():
+    for i in range(len(images)):
+        image = get_image_by_id(i)
+        image.set_inactive()
+
 
 #
 #   Events Handlers
@@ -1521,6 +1511,7 @@ def get_input():
         elif event.type == MOUSEBUTTONUP:
             if event.button == 1:
                 dragging = False
+                set_images_inactive()
             last_action = "mouseup"
         elif event.type == MOUSEMOTION:
             if dragging:
