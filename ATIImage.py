@@ -69,8 +69,8 @@ class ATIImage(object):
     def get_top_left(self):
         return self.top_left
 
-    def get_botton_right(self):
-        return [self.top_left[0] + self.width, self.top_left[1] + self.height]
+    def get_bottom_right(self):
+        return [self.top_left[0] + self.width - 1, self.top_left[1] + self.height - 1]
 
     def get_red_band(self):
         data = []
@@ -109,35 +109,40 @@ class ATIImage(object):
         x = pos[0] - self.top_left[0]
         y = pos[1] - self.top_left[1]
         if not (0 <= x < self.width):
+            print("x")
+            print(pos[0])
+            print(self.top_left[0])
+            print(x)
             raise Exception("Invalid position")
         if not (0 <= y < self.height):
+            print("y")
+            print(pos[1])
+            print(self.top_left[1])
+            print(y)
             raise Exception("Invalid position")
         return self.get_at((x, y))
 
-    def __get_band_average_display(self, tl, br, band):
-        left = tl[0]
-        top = tl[1]
-        right = br[0]
-        botton = br[1]
-        count = 0
+    def __get_band_average_display(self, data, band):
         total = 0
-        for x in range(right - left + 1):
-            for y in range(botton - top + 1):
-                count = count + 1
-                total = total + self.get_at_display((x + left, y + top))[band]
-        return round(total / count, 2)
+        if len(data) > 0:
+            rows = len(data)
+            cols = len(data[0])
+            for y in range(rows):
+                for x in range(cols):
+                    total += data[y][x][band]
+            return round(total / (rows*cols), 2)
 
-    def get_grey_average_display(self, tl, br):
-        return self.get_red_average_display(tl, br)
+    def get_grey_average_display(self, data):
+        return self.get_red_average_display(data)
 
-    def get_red_average_display(self, tl, br):
-        return self.__get_band_average_display(tl, br, 0)
+    def get_red_average_display(self, data):
+        return self.__get_band_average_display(data, 0)
 
-    def get_green_average_display(self, tl, br):
-        return self.__get_band_average_display(tl, br, 1)
+    def get_green_average_display(self, data):
+        return self.__get_band_average_display(data, 1)
 
-    def get_blue_average_display(self, tl, br):
-        return self.__get_band_average_display(tl, br, 2)
+    def get_blue_average_display(self, data):
+        return self.__get_band_average_display(data, 2)
 
     def get_at_screen_position(self, x, y):
         # get colorvalue based on a screen position
@@ -173,19 +178,27 @@ class ATIImage(object):
     def set_at_display(self, pos, color):
         x = pos[0] - self.top_left[0] - 1
         y = pos[1] - self.top_left[1] - 1
-        if not (0 <= x <= self.width - 1):
+        """if not (0 <= x <= self.width - 1):
             raise Exception("Invalid position")
         if not (0 <= y <= self.height - 1):
-            raise Exception("Invalid position")
+            raise Exception("Invalid position")"""
         self.set_at((x, y), color)
 
+    def set_data(self, data):
+        self.data = data
+
+
+    def set_inactive(self):
+        self.active = False
     #
     #   Condition Statements
     #
 
-    def in_display_image(self, pos):
-        botton_right = self.get_botton_right()
-        return self.top_left[0] <= pos[0] < botton_right[0] and self.top_left[1] <= pos[1] < botton_right[1]
+    def collidepoint(self, x, y):
+        if self.values_set:
+            if self.top_left[0] < x < self.top_left[0] + self.width and \
+                    self.top_left[1] < y < self.top_left[1] + self.height:
+                return True
 
     def set_at(self, pos, color):
         self.data[pos[1]][pos[0]] = color
@@ -321,10 +334,11 @@ class ATIImage(object):
         self.dynamic_compression()
 
     # Threshold Function
-    def __threshold_assign(self, array, threshold):
+    @staticmethod
+    def __threshold_assign(array, threshold):
         # for x in range(3):
-        max_value = self.max_gray_level
-        min_value = 0
+        # max_value = self.max_gray_level
+        # min_value = 0
         if array[0] <= threshold:
             return [0, 0, 0]
         return [255, 255, 255]
@@ -448,12 +462,6 @@ class ATIImage(object):
                 color = self.get_at((x, y))
                 self.set_at((x, y), (255 - color[0], 255 - color[1], 255 - color[2]))
 
-    def collidepoint(self, x, y):
-        # check if arguments x and why "collides" on image
-        if self.values_set:
-            if self.top_left[0] < x < self.top_left[0] + self.width and \
-                    self.top_left[1] < y < self.top_left[1] + self.height:
-                return True
 
     def restore_data(self):
         for y in range(self.height):

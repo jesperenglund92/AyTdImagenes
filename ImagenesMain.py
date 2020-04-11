@@ -31,7 +31,7 @@ class Window(Frame):
         self.file_menu.add_cascade(label="New File", menu=self.file_submenu)
 
         self.file_menu.add_command(label="Load Image", command=open_file)
-        self.file_menu.add_command(label="Save File", command=save_file, state=self.image_loaded)
+        self.file_menu.add_command(label="Save File", command=save_file)
         self.file_menu.add_command(label="Exit", command=self.exit_program)
         self.menu.add_cascade(label="File", menu=self.file_menu)
 
@@ -51,7 +51,9 @@ class Window(Frame):
         self.edit_submenu.add_command(label="Median", command=lambda: set_kernel_size("mdn"))
         self.edit_submenu.add_command(label="Median weighted", command=filter_image_mdnp)
         self.edit_submenu.add_command(label="Gauss", command=lambda: set_kernel_size("gau"))
-        self.edit_submenu.add_command(label="Edge enhancement", command=set_edge_level)
+        self.edit_submenu.add_command(label="Border enhancement", command=set_edge_level)
+        self.edit_submenu.add_command(label="Border detection (Sobel)", command=lambda: edge_enhance(1, "sobel"))
+        self.edit_submenu.add_command(label="Border detection (Prewitt)", command=lambda: edge_enhance(1, "prewitt"))
 
         self.menu.add_cascade(label="Edit", menu=self.edit_menu)
 
@@ -59,8 +61,6 @@ class Window(Frame):
         self.view_menu.add_command(label="Histogram", command=histogram_window)
         # self.view_menu.add_command(label="Equalize", command=equalize_histogram)
         self.menu.add_cascade(label="View", menu=self.view_menu)
-
-        self.disable_image_menu()
 
         Label(master, text="x: ").grid(row=0, column=0)
         Label(master, text="y: ").grid(row=1, column=0)
@@ -89,14 +89,6 @@ class Window(Frame):
         Label(master, text=" V: ").grid(row=3, column=4)
         self.lblVValue = Label(master, text="0", textvariable=self.hsv_v)
         self.lblVValue.grid(row=3, column=5)
-
-        Label(master, text="Pixel amount: ").grid(row=4, column=0)
-        self.pixel_amount = Label(master, text="0")
-        self.pixel_amount.grid(row=4, column=1)
-
-        Label(master, text="Grayscale average: ").grid(row=5, column=0)
-        self.gray_avg = Label(master, text="0")
-        self.gray_avg.grid(row=5, column=1)
 
         Label(master, text="Selected region: ").grid(row=6, column=0)
         Label(master, text="Grey Average: ").grid(row=7, column=0)
@@ -176,8 +168,6 @@ class Window(Frame):
 #
 
 def reset_image():
-    global editableImage
-    # editableImage.data = originalImage.data
     editableImage.restore_data()
     draw_ati_image(editableImage)
 
@@ -189,7 +179,7 @@ def set_edge_level():
     Label(window, text="Level (0-1): ").grid(row=0, column=0)
     level = Entry(window)
     level.grid(row=0, column=1)
-    Button(window, text="Change", command=lambda: edge_enhance(level.get())).grid(row=0, column=2)
+    Button(window, text="Change", command=lambda: edge_enhance(level.get(), "sobel")).grid(row=0, column=2)
 
 
 def set_kernel_size(kernel_type):
@@ -218,69 +208,151 @@ def which_filter(size, filter_type, sigma=None):
         filter_image_gauss(size, sigma)
 
 
-def redraw_img(img, filtered_image):
+"""def redraw_img(img, filtered_image):
     filtered_image = np.repeat(filtered_image, 3)
     filtered_image = filtered_image.reshape((img.shape[0], img.shape[1], 3))
+    editableImage.data = filtered_image
+    draw_ati_image(editableImage)"""
+
+
+def redraw_img(filtered_image, col):
+    img = np.array(editableImage.data)
+    if not col:
+        filtered_image = np.repeat(filtered_image, 3)
+    filtered_image = filtered_image.reshape(img.shape)
     editableImage.data = filtered_image
     draw_ati_image(editableImage)
 
 
-def edge_enhance(level):
+def edge_enhance(level, operator):
     level = float(level)
-    img = np.array(editableImage.data)[:, :, 0]
-    h_x = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
-    h_y = np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
+    if editableImage.image_type == "ppm":
+        colors = 3
+    else:
+        colors = 1
+    fin_img = None
+    image = np.array(editableImage.data)
+    if operator == "prewitt":
+        h_x = np.array([[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]])
+        h_y = np.array([[-1, -1, -1], [0, 0, 0], [1, 1, 1]])
+    else:
+        h_x = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
+        h_y = np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
     size = 3
     pad = int((size - 1) / 2)
-    g_x = convolve_func_avg(img, h_x, pad, size)
-    g_y = convolve_func_avg(img, h_y, pad, size)
-    g = np.sqrt(g_x ** 2 + g_y ** 2)
-    const = level
-    new_img = img + g * const
-    new_img = normalize(new_img)
-    redraw_img(img, new_img)
+    for i in range(colors):
+        img = image[:, :, i]
+        g_x = convolve_func_avg(img, h_x, pad, size)
+        g_y = convolve_func_avg(img, h_y, pad, size)
+        g = np.sqrt(g_x ** 2 + g_y ** 2)
+        new_img = img + g * level
+        new_img = normalize(new_img)
+        if i < 1:
+            fin_img = new_img
+        else:
+            fin_img = np.dstack((fin_img, new_img))
+    if colors == 1:
+        redraw_img(fin_img, False)
+    else:
+        redraw_img(fin_img, True)
 
 
 def filter_image_gauss(size, sigma):
+    if editableImage.image_type == "ppm":
+        colors = 3
+    else:
+        colors = 1
+    image = np.array(editableImage.data)
     size = int(size)
     sigma = float(sigma)
     n_size = (size - 1) / 2
     pad = int((size - 1) / 2)
-    img = np.array(editableImage.data)[:, :, 0]
     x, y = np.mgrid[-n_size:n_size + 1, -n_size:n_size + 1]
     k = 1 / (2 * math.pi * sigma ** 2)
     gauss_kernel = k * np.exp(-(x ** 2 + y ** 2) / (2 * sigma ** 2))
     mask = gauss_kernel / np.sum(gauss_kernel)
-    gauss_img = convolve_func_avg(img, mask, pad, size)
-    redraw_img(img, gauss_img)
+    fin_img = None
+    for i in range(colors):
+        img = image[:, :, i]
+        gauss_img = convolve_func_avg(img, mask, pad, size)
+        if i < 1:
+            fin_img = gauss_img
+        else:
+            fin_img = np.dstack((fin_img, gauss_img))
+    if colors == 1:
+        redraw_img(fin_img, False)
+    else:
+        redraw_img(fin_img, True)
 
 
 def filter_image_mdnp():
+    if editableImage.image_type == "ppm":
+        colors = 3
+    else:
+        colors = 1
+    image = np.array(editableImage.data)
     size = 3
     mask = np.array([[1, 2, 1], [2, 4, 2], [1, 2, 1]])
     pad = int((size - 1) / 2)
-    img = np.array(editableImage.data)[:, :, 0]
-    mdn = convolve_func_mdnp(img, mask, pad, size)
-    redraw_img(img, mdn)
+    fin_img = None
+    for i in range(colors):
+        img = image[:, :, i]
+        mdn = convolve_func_mdnp(img, mask, pad, size)
+        if i < 1:
+            fin_img = mdn
+        else:
+            fin_img = np.dstack((fin_img, mdn))
+    if colors == 1:
+        redraw_img(fin_img, False)
+    else:
+        redraw_img(fin_img, True)
 
 
 def filter_image_mdn(size):
+    if editableImage.image_type == "ppm":
+        colors = 3
+    else:
+        colors = 1
+    image = np.array(editableImage.data)
     size = int(size)
     pad = int((size - 1) / 2)
-    img = np.array(editableImage.data)[:, :, 0]
-    mdn = convolve_func_mdn(img, pad, size)
-    redraw_img(img, mdn)
+    fin_img = None
+    for i in range(colors):
+        img = image[:, :, i]
+        mdn = convolve_func_mdn(img, pad, size)
+        if i < 1:
+            fin_img = mdn
+        else:
+            fin_img = np.dstack((fin_img, mdn))
+    if colors == 1:
+        redraw_img(fin_img, False)
+    else:
+        redraw_img(fin_img, True)
 
 
 def filter_image_avg(size):
+    if editableImage.image_type == "ppm":
+        colors = 3
+    else:
+        colors = 1
+    image = np.array(editableImage.data)
     size = int(size)
     mask = np.ones((size, size))
     k = 1 / (size ** 2)
     mask = k * mask
     pad = int((size - 1) / 2)
-    img = np.array(editableImage.data)[:, :, 0]
-    avg = convolve_func_avg(img, mask, pad, size)
-    redraw_img(img, avg)
+    fin_img = None
+    for i in range(colors):
+        img = image[:, :, i]
+        avg = convolve_func_avg(img, mask, pad, size)
+        if i < 1:
+            fin_img = avg
+        else:
+            fin_img = np.dstack((fin_img, avg))
+    if colors == 1:
+        redraw_img(fin_img, False)
+    else:
+        redraw_img(fin_img, True)
 
 
 def convolve_func_mdnp(img, mask, pad, size):
@@ -452,6 +524,7 @@ class NoiseWindow:
         if gamma == '':
             raise Exception("Gamma not set")
         image.noise_exponential(percent, gamma)
+        print(image.data[0])
         draw_ati_image(image)
         self.delete_window()
 
@@ -492,14 +565,14 @@ def open_file():
     if filename:
         file = open(filename, "rb")
         if filename.lower().endswith('.raw'):
-            editableImage.type = '.raw'
+            editableImage.image_type = 'raw'
             RawWindow(file)
         if filename.lower().endswith('.pgm'):
-            editableImage.type = '.pgm'
+            editableImage.image_type = 'pgm'
             load_pgm(file)
             draw_images()
         if filename.lower().endswith('.ppm'):
-            editableImage.type = '.ppm'
+            editableImage.image_type = 'ppm'
             load_ppm(file)
             draw_images()
         file.close()
@@ -558,17 +631,17 @@ class RawWindow:
         editableImage.data = image
         editableImage.max_gray_level = 255
         editableImage.set_restore_image()
+        editableImage.values_set = True
+        editableImage.image_type = ".raw"
 
         originalImage = editableImage.get_copy()
         originalImage.editable = False
         originalImage.id = 1
+        originalImage.values_set = True
+        originalImage.image_type = ".raw"
 
         draw_images()
         file.close()
-
-        # originalImage.data = image
-        # originalImage.width = width
-        # originalImage.height = height
 
 
 def load_pgm(file):
@@ -617,8 +690,13 @@ def load_ppm(file):
     editableImage.magic_num = magic_num
     editableImage.max_gray_level = max_val
     editableImage.set_restore_image()
+    editableImage.values_set = True
 
     originalImage = editableImage.get_copy()
+    originalImage.editable = False
+    originalImage.id = 1
+    originalImage.values_set = True
+    originalImage.image_type = ".ppm"
 
     app.enable_image_menu()
 
@@ -818,7 +896,7 @@ class OperationsWindow:
         if gamma <= 0 or gamma == 1 or gamma >= 2:
             raise Exception("Invalid Gamma")
         editableImage.gamma_function(gamma)
-        pass
+        draw_ati_image(editableImage)
 
 
 def add_images(image_id_1=0, image_id_2=1):
@@ -1037,7 +1115,7 @@ class NewWhiteCircle:
             data.append(row)
 
         image = ATIImage(data=data, width=width, height=height, image_type='.ppm',
-                         active=True, editable=True, top_left=top_left)
+                         active=False, editable=True, top_left=top_left)
         image.max_gray_level = 255
         image.magic_num = 'P6'
         editableImage = image
@@ -1114,7 +1192,7 @@ class NewWhiteSquare:
                     row.append((255, 255, 255))
             data.append(row)
 
-        image = ATIImage(data=data, width=width, height=height, image_type='.ppm', active=True,
+        image = ATIImage(data=data, width=width, height=height, image_type='.ppm', active=False,
                          editable=True, top_left=top_left)
         image.max_gray_level = 255
         image.magic_num = 'P6'
@@ -1179,7 +1257,7 @@ class NewDegrade:
                 row.append(function(x, width))
             data.append(row)
 
-        image = ATIImage(data=data, width=width, height=height, image_type='.ppm', active=True,
+        image = ATIImage(data=data, width=width, height=height, image_type='.ppm', active=False,
                          editable=True, top_left=top_left)
         image.max_gray_level = 255
         image.magic_num = 'P6'
@@ -1199,13 +1277,13 @@ class NewDegrade:
 #   Draw
 #
 
+
 def draw_selection(x, y, x2, y2, selection_color):
     global surface
     top = min(y, y2)
     left = min(x, x2)
     right = max(x, x2)
     bottom = max(y, y2)
-    pygame.display.get_surface()
     for x in range(right - left):
         surface.set_at((x + left, top), selection_color)
         surface.set_at((x + left, bottom), selection_color)
@@ -1214,14 +1292,13 @@ def draw_selection(x, y, x2, y2, selection_color):
         surface.set_at((right, top + y), selection_color)
 
 
-def draw_selection_rectangle(selection, top_left, botton_rigth):
+def draw_selection_rectangle(top_left, bottom_right, image_id):
     global surface
     top = top_left[1]
     left = top_left[0]
-    bottom = botton_rigth[1]
-    right = botton_rigth[0]
-    image = get_image_by_id(selection.image)
-    pygame.display.get_surface()
+    bottom = bottom_right[1]
+    right = bottom_right[0]
+    image = get_image_by_id(image_id)
     for x in range(right - left):
         surface.set_at((x + left, top), image.get_at_display((x + left, top)))
         surface.set_at((x + left, bottom), image.get_at_display((x + left, bottom)))
@@ -1230,16 +1307,22 @@ def draw_selection_rectangle(selection, top_left, botton_rigth):
         surface.set_at((right, top + y), image.get_at_display((right, top + y)))
 
 
-def draw_pre_image_selection(selection):
-    tl = selection.get_prev_top_left()
-    br = selection.get_prev_botton_right()
-    draw_selection_rectangle(selection, tl, br)
+def draw_prev_selection_outside_img(top_left, bottom_right, col):
+    top = top_left[1]
+    left = top_left[0]
+    bottom = bottom_right[1]
+    right = bottom_right[0]
+    for x in range(right - left):
+        surface.set_at((x + left, top), col)
+        surface.set_at((x + left, bottom), col)
+    for y in range(bottom - top):
+        surface.set_at((left, top + y), col)
+        surface.set_at((right, top + y), col)
 
 
-def draw_image_selection(selection):
-    tl = selection.get_top_left()
-    br = selection.get_botton_right()
-    draw_selection_rectangle(selection, tl, br)
+def draw_pre_image_selection(selection, image_id):
+    tl, br = selection.get_image_within_selection()
+    draw_selection_rectangle(tl, br, image_id)
 
 
 def draw_ati_image(image):
@@ -1257,9 +1340,9 @@ def draw_images():
     global editableImage
     global originalImage
     global surface
-    editableImage.top_left = [20, 20]
-    originalImage.top_left = [40 + originalImage.width, 20]
-    editableImage.active = True
+    editableImage.set_top_left((20, 20))
+    originalImage.set_top_left((40 + originalImage.width, 20))
+    editableImage.active = False
     originalImage.active = False
     pygame.display.set_mode((60 + editableImage.width * 2, 40 + editableImage.height))
     surface.fill((0, 0, 0))
@@ -1333,9 +1416,9 @@ def get_image_by_id(image_id):
 
 
 def is_click_in_images(pos):
-    if editableImage.in_display_image(pos):
+    if editableImage.collidepoint(pos[0], pos[1]):
         return 0
-    if originalImage.in_display_image(pos):
+    if originalImage.collidepoint(pos[0], pos[1]):
         return 1
     return -1
 
@@ -1344,35 +1427,60 @@ def is_click_in_images(pos):
 #   Selection
 #
 
-
 def update_selection_values(selection):
-    app.selection_pixel_count["text"] = selection.get_pixel_count()
-    image_id = selection.image
+    image_id = -1
+    for i in range(len(images)):
+        image = get_image_by_id(i)
+        if image.collidepoint(selection.new_x, selection.new_y):
+            image_id = image.id
     if image_id != -1:
         image_selected = get_image_by_id(image_id)
+        selected_data = image_data_in_selection(image_selected)
+        app.selection_pixel_count["text"] = selection.get_pixel_count(selected_data)
         if image_selected.image_color_type() == 'g':
             app.grey_pixel_average["text"] = image_selected \
-                .get_grey_average_display(selection.get_top_left(), selection.get_botton_right())
+                .get_grey_average_display(selected_data)
         else:
             app.red_pixel_average["text"] = image_selected \
-                .get_red_average_display(selection.get_top_left(), selection.get_botton_right())
+                .get_red_average_display(selected_data)
             app.green_pixel_average["text"] = image_selected \
-                .get_green_average_display(selection.get_top_left(), selection.get_botton_right())
+                .get_green_average_display(selected_data)
             app.blue_pixel_average["text"] = image_selected \
-                .get_blue_average_display(selection.get_top_left(), selection.get_botton_right())
+                .get_blue_average_display(selected_data)
     return
 
 
-def make_selection(selection):
-    draw_pre_image_selection(selection)
-    draw_selection(selection.x, selection.y, selection.new_x, selection.new_y, (0, 0, 255))
+def selection_on_image(selection, image):
+    tl = selection.get_top_left()
+    tr = selection.get_top_right()
+    bl = selection.get_bottom_left()
+    br = selection.get_bottom_right()
+    tlcp = image.collidepoint(tl[0], tl[1])
+    trcp = image.collidepoint(tr[0], tr[1])
+    blcp = image.collidepoint(bl[0], bl[1])
+    brcp = image.collidepoint(br[0], br[1])
+    if tlcp or trcp or blcp or brcp:
+        return True
 
-    # rect = (x, y, x2-x, y2-y)
-    # pygame.draw.rect(surface, (0,0,255), (x, y, x2-x, y2-y))
+
+def make_selection(selection):
+    tl = selection.get_prev_top_left()
+    br = selection.get_prev_bottom_right()
+    draw_prev_selection_outside_img(tl, br, (0, 0, 0))
+    for i in range(len(images)):
+        image = get_image_by_id(i)
+        if selection_on_image(selection, image):
+            image.active = True
+        if image.active:
+            selection.image = image.id
+            i_br = image.get_bottom_right()
+            selection.set_image_within_selection(image.top_left, i_br, image.width, image.height)
+            draw_pre_image_selection(selection, image.id)
+    draw_selection(selection.x, selection.y, selection.new_x, selection.new_y, (0, 0, 255))
 
 
 def image_data_in_selection(img):
-    # function returning the color_data of in-image within current selection.
+    # function returning the color_data of image within current selection.
     data = []
     y_iterator = 0
     for i in range(abs(new_selection.new_y - new_selection.y)):
@@ -1400,13 +1508,40 @@ def image_data_in_selection(img):
 
 def copy_selection():
     # function copying and drawing a copy of selected part of original image.
-    for img in images:
-        if img.values_set:
-            if not img.editable:
-                data = image_data_in_selection(img)
-                image = ATIImage(data, len(data[0]), len(data), "type", (300, 50), True, True)
-                images.append(image)
-                draw_ati_image(image)
+    done = False
+    data = None
+    original_in_selection = False
+    while not done:
+        for i in range(len(images)):
+            img = get_image_by_id(i)
+            if img.values_set:
+                if img.editable:
+                    if data:
+                        for row in range(img.height):
+                            for col in range(img.width):
+                                img.set_at((col, row), (0, 0, 0))
+                        draw_ati_image(img)
+                        img.data = data
+                        img.height = len(data)
+                        img.width = len(data[0])
+                        draw_ati_image(img)
+                        done = True
+                else:
+                    data = image_data_in_selection(img)
+                    if data:
+                        original_in_selection = True
+            else:
+                print("Values not set")
+                done = True
+        if not original_in_selection:
+            print("Copy original instead")
+            done = True
+
+
+def set_images_inactive():
+    for i in range(len(images)):
+        image = get_image_by_id(i)
+        image.set_inactive()
 
 
 #
@@ -1414,9 +1549,10 @@ def copy_selection():
 #
 
 def handle_mouse_input(mouse_pos, image_click):
-    image = get_image_by_id(image_click)
-    pos_display = image.get_pos_display(mouse_pos)
-    app.set_value_entry(pos_display[0], pos_display[1], image.get_at_display(mouse_pos))
+    if image_click != -1:
+        image = get_image_by_id(image_click)
+        pos_display = image.get_pos_display(mouse_pos)
+        app.set_value_entry(pos_display[0], pos_display[1], image.get_at_display(mouse_pos))
 
 
 def get_input():
@@ -1432,40 +1568,38 @@ def get_input():
             return True
         elif event.type == MOUSEBUTTONDOWN:
             if event.button == 1:
-                # print("mousedown")
                 mouse_position = pygame.mouse.get_pos()
                 image_click = is_click_in_images(mouse_position)
 
-                if editableImage.active and image_click != -1:
-                    if is_selection_active:
-                        draw_image_selection(new_selection)
+                if is_selection_active:
+                    draw_selection(new_selection.x, new_selection.y, new_selection.new_x, new_selection.new_y,
+                                   (0, 0, 0))
+                    orig = get_image_by_id(1)
+                    edit = get_image_by_id(0)
+                    draw_ati_image(orig)
+                    draw_ati_image(edit)
 
-                    new_selection.set_start_pos(mouse_position)
-                    new_selection.set_image(image_click)
+                new_selection.set_start_pos(mouse_position)
+                new_selection.set_image(image_click)
 
-                    update_selection_values(new_selection)
+                update_selection_values(new_selection)
 
-                    dragging = True
-                    is_selection_active = True
-                    handle_mouse_input(mouse_position, image_click)
+                dragging = True
+                is_selection_active = True
+                handle_mouse_input(mouse_position, image_click)
 
                 last_action = "mousedown"
         elif event.type == MOUSEBUTTONUP:
             if event.button == 1:
-                if last_action != "mousemotion":
-                    is_selection_active = False
-                    update_selection_values(new_selection)
                 dragging = False
+                set_images_inactive()
             last_action = "mouseup"
         elif event.type == MOUSEMOTION:
             if dragging:
                 mouse_position = pygame.mouse.get_pos()
-                if is_click_in_images(mouse_position) == new_selection.image:
-                    new_selection.set_new_pos(mouse_position)
-                    make_selection(new_selection)
-                    update_selection_values(new_selection)
-                else:
-                    pass
+                new_selection.set_new_pos(mouse_position)
+                make_selection(new_selection)
+                update_selection_values(new_selection)
             last_action = "mousemotion"
         sys.stdout.flush()  # get stuff to the console
     return False
@@ -1485,7 +1619,11 @@ def main():
 
     root.wm_title("Tkinter window")
     root.protocol("WM_DELETE_WINDOW", quit_callback)
-    surface.fill((255, 255, 255))
+    """surface.fill((255, 255, 255))
+    file = open("testing-images/Lenaclor.ppm", "rb")
+    load_ppm(file)
+    draw_images()
+    file.close()"""
 
     done = False
     while not done:
