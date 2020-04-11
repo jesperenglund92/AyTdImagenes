@@ -20,7 +20,7 @@ class Window(Frame):
         self.screenX = 0
         self.screenY = 0
         self.master.geometry("440x280")
-        #self.image_loaded = DISABLED
+        self.image_loaded = DISABLED
 
         self.file_menu = Menu(self.menu)
         self.file_submenu = Menu(self.file_menu)
@@ -51,7 +51,9 @@ class Window(Frame):
         self.edit_submenu.add_command(label="Median", command=lambda: set_kernel_size("mdn"))
         self.edit_submenu.add_command(label="Median weighted", command=filter_image_mdnp)
         self.edit_submenu.add_command(label="Gauss", command=lambda: set_kernel_size("gau"))
-        self.edit_submenu.add_command(label="Edge enhancement", command=set_edge_level)
+        self.edit_submenu.add_command(label="Border enhancement", command=set_edge_level)
+        self.edit_submenu.add_command(label="Border detection (Sobel)", command=lambda: edge_enhance(1, "sobel"))
+        self.edit_submenu.add_command(label="Border detection (Prewitt)", command=lambda: edge_enhance(1, "prewitt"))
 
         self.menu.add_cascade(label="Edit", menu=self.edit_menu)
 
@@ -87,7 +89,6 @@ class Window(Frame):
         Label(master, text=" V: ").grid(row=3, column=4)
         self.lblVValue = Label(master, text="0", textvariable=self.hsv_v)
         self.lblVValue.grid(row=3, column=5)
-
 
         Label(master, text="Selected region: ").grid(row=6, column=0)
         Label(master, text="Grey Average: ").grid(row=7, column=0)
@@ -178,7 +179,7 @@ def set_edge_level():
     Label(window, text="Level (0-1): ").grid(row=0, column=0)
     level = Entry(window)
     level.grid(row=0, column=1)
-    Button(window, text="Change", command=lambda: edge_enhance(level.get())).grid(row=0, column=2)
+    Button(window, text="Change", command=lambda: edge_enhance(level.get(), "sobel")).grid(row=0, column=2)
 
 
 def set_kernel_size(kernel_type):
@@ -207,69 +208,151 @@ def which_filter(size, filter_type, sigma=None):
         filter_image_gauss(size, sigma)
 
 
-def redraw_img(img, filtered_image):
+"""def redraw_img(img, filtered_image):
     filtered_image = np.repeat(filtered_image, 3)
     filtered_image = filtered_image.reshape((img.shape[0], img.shape[1], 3))
+    editableImage.data = filtered_image
+    draw_ati_image(editableImage)"""
+
+
+def redraw_img(filtered_image, col):
+    img = np.array(editableImage.data)
+    if not col:
+        filtered_image = np.repeat(filtered_image, 3)
+    filtered_image = filtered_image.reshape(img.shape)
     editableImage.data = filtered_image
     draw_ati_image(editableImage)
 
 
-def edge_enhance(level):
+def edge_enhance(level, operator):
     level = float(level)
-    img = np.array(editableImage.data)[:, :, 0]
-    h_x = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
-    h_y = np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
+    if editableImage.image_type == "ppm":
+        colors = 3
+    else:
+        colors = 1
+    fin_img = None
+    image = np.array(editableImage.data)
+    if operator == "prewitt":
+        h_x = np.array([[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]])
+        h_y = np.array([[-1, -1, -1], [0, 0, 0], [1, 1, 1]])
+    else:
+        h_x = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
+        h_y = np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
     size = 3
     pad = int((size - 1) / 2)
-    g_x = convolve_func_avg(img, h_x, pad, size)
-    g_y = convolve_func_avg(img, h_y, pad, size)
-    g = np.sqrt(g_x ** 2 + g_y ** 2)
-    const = level
-    new_img = img + g * const
-    new_img = normalize(new_img)
-    redraw_img(img, new_img)
+    for i in range(colors):
+        img = image[:, :, i]
+        g_x = convolve_func_avg(img, h_x, pad, size)
+        g_y = convolve_func_avg(img, h_y, pad, size)
+        g = np.sqrt(g_x ** 2 + g_y ** 2)
+        new_img = img + g * level
+        new_img = normalize(new_img)
+        if i < 1:
+            fin_img = new_img
+        else:
+            fin_img = np.dstack((fin_img, new_img))
+    if colors == 1:
+        redraw_img(fin_img, False)
+    else:
+        redraw_img(fin_img, True)
 
 
 def filter_image_gauss(size, sigma):
+    if editableImage.image_type == "ppm":
+        colors = 3
+    else:
+        colors = 1
+    image = np.array(editableImage.data)
     size = int(size)
     sigma = float(sigma)
     n_size = (size - 1) / 2
     pad = int((size - 1) / 2)
-    img = np.array(editableImage.data)[:, :, 0]
     x, y = np.mgrid[-n_size:n_size + 1, -n_size:n_size + 1]
     k = 1 / (2 * math.pi * sigma ** 2)
     gauss_kernel = k * np.exp(-(x ** 2 + y ** 2) / (2 * sigma ** 2))
     mask = gauss_kernel / np.sum(gauss_kernel)
-    gauss_img = convolve_func_avg(img, mask, pad, size)
-    redraw_img(img, gauss_img)
+    fin_img = None
+    for i in range(colors):
+        img = image[:, :, i]
+        gauss_img = convolve_func_avg(img, mask, pad, size)
+        if i < 1:
+            fin_img = gauss_img
+        else:
+            fin_img = np.dstack((fin_img, gauss_img))
+    if colors == 1:
+        redraw_img(fin_img, False)
+    else:
+        redraw_img(fin_img, True)
 
 
 def filter_image_mdnp():
+    if editableImage.image_type == "ppm":
+        colors = 3
+    else:
+        colors = 1
+    image = np.array(editableImage.data)
     size = 3
     mask = np.array([[1, 2, 1], [2, 4, 2], [1, 2, 1]])
     pad = int((size - 1) / 2)
-    img = np.array(editableImage.data)[:, :, 0]
-    mdn = convolve_func_mdnp(img, mask, pad, size)
-    redraw_img(img, mdn)
+    fin_img = None
+    for i in range(colors):
+        img = image[:, :, i]
+        mdn = convolve_func_mdnp(img, mask, pad, size)
+        if i < 1:
+            fin_img = mdn
+        else:
+            fin_img = np.dstack((fin_img, mdn))
+    if colors == 1:
+        redraw_img(fin_img, False)
+    else:
+        redraw_img(fin_img, True)
 
 
 def filter_image_mdn(size):
+    if editableImage.image_type == "ppm":
+        colors = 3
+    else:
+        colors = 1
+    image = np.array(editableImage.data)
     size = int(size)
     pad = int((size - 1) / 2)
-    img = np.array(editableImage.data)[:, :, 0]
-    mdn = convolve_func_mdn(img, pad, size)
-    redraw_img(img, mdn)
+    fin_img = None
+    for i in range(colors):
+        img = image[:, :, i]
+        mdn = convolve_func_mdn(img, pad, size)
+        if i < 1:
+            fin_img = mdn
+        else:
+            fin_img = np.dstack((fin_img, mdn))
+    if colors == 1:
+        redraw_img(fin_img, False)
+    else:
+        redraw_img(fin_img, True)
 
 
 def filter_image_avg(size):
+    if editableImage.image_type == "ppm":
+        colors = 3
+    else:
+        colors = 1
+    image = np.array(editableImage.data)
     size = int(size)
     mask = np.ones((size, size))
     k = 1 / (size ** 2)
     mask = k * mask
     pad = int((size - 1) / 2)
-    img = np.array(editableImage.data)[:, :, 0]
-    avg = convolve_func_avg(img, mask, pad, size)
-    redraw_img(img, avg)
+    fin_img = None
+    for i in range(colors):
+        img = image[:, :, i]
+        avg = convolve_func_avg(img, mask, pad, size)
+        if i < 1:
+            fin_img = avg
+        else:
+            fin_img = np.dstack((fin_img, avg))
+    if colors == 1:
+        redraw_img(fin_img, False)
+    else:
+        redraw_img(fin_img, True)
 
 
 def convolve_func_mdnp(img, mask, pad, size):
@@ -482,14 +565,14 @@ def open_file():
     if filename:
         file = open(filename, "rb")
         if filename.lower().endswith('.raw'):
-            editableImage.type = '.raw'
+            editableImage.image_type = 'raw'
             RawWindow(file)
         if filename.lower().endswith('.pgm'):
-            editableImage.type = '.pgm'
+            editableImage.image_type = 'pgm'
             load_pgm(file)
             draw_images()
         if filename.lower().endswith('.ppm'):
-            editableImage.type = '.ppm'
+            editableImage.image_type = 'ppm'
             load_ppm(file)
             draw_images()
         file.close()
@@ -518,6 +601,9 @@ class RawWindow:
         self.txtHeight = Entry(self.window, textvariable=self.height)
         self.txtWidth.grid(row=5, column=1)
         self.txtHeight.grid(row=6, column=1)
+
+        self.button = Button(self.window, text="Open raw", command=self.open_raw_image)
+        self.button.grid(row=8)
 
     def open_raw_image(self):
         global editableImage
@@ -1221,17 +1307,17 @@ def draw_selection_rectangle(top_left, bottom_right, image_id):
         surface.set_at((right, top + y), image.get_at_display((right, top + y)))
 
 
-def draw_prev_selection_outside_img(top_left, bottom_right, color):
+def draw_prev_selection_outside_img(top_left, bottom_right, col):
     top = top_left[1]
     left = top_left[0]
     bottom = bottom_right[1]
     right = bottom_right[0]
     for x in range(right - left):
-        surface.set_at((x + left, top), color)
-        surface.set_at((x + left, bottom), color)
+        surface.set_at((x + left, top), col)
+        surface.set_at((x + left, bottom), col)
     for y in range(bottom - top):
-        surface.set_at((left, top + y), color)
-        surface.set_at((right, top + y), color)
+        surface.set_at((left, top + y), col)
+        surface.set_at((right, top + y), col)
 
 
 def draw_pre_image_selection(selection, image_id):
@@ -1377,9 +1463,7 @@ def selection_on_image(selection, image):
         return True
 
 
-
 def make_selection(selection):
-    #draw_pre_image_selection(selection)
     tl = selection.get_prev_top_left()
     br = selection.get_prev_bottom_right()
     draw_prev_selection_outside_img(tl, br, (0, 0, 0))
@@ -1393,9 +1477,6 @@ def make_selection(selection):
             selection.set_image_within_selection(image.top_left, i_br, image.width, image.height)
             draw_pre_image_selection(selection, image.id)
     draw_selection(selection.x, selection.y, selection.new_x, selection.new_y, (0, 0, 255))
-
-    # rect = (x, y, x2-x, y2-y)
-    # pygame.draw.rect(surface, (0,0,255), (x, y, x2-x, y2-y))
 
 
 def image_data_in_selection(img):
@@ -1487,12 +1568,12 @@ def get_input():
             return True
         elif event.type == MOUSEBUTTONDOWN:
             if event.button == 1:
-                # print("mousedown")
                 mouse_position = pygame.mouse.get_pos()
                 image_click = is_click_in_images(mouse_position)
 
                 if is_selection_active:
-                    draw_selection(new_selection.x, new_selection.y, new_selection.new_x, new_selection.new_y, (0, 0, 0))
+                    draw_selection(new_selection.x, new_selection.y, new_selection.new_x, new_selection.new_y,
+                                   (0, 0, 0))
                     orig = get_image_by_id(1)
                     edit = get_image_by_id(0)
                     draw_ati_image(orig)
@@ -1538,11 +1619,11 @@ def main():
 
     root.wm_title("Tkinter window")
     root.protocol("WM_DELETE_WINDOW", quit_callback)
-    surface.fill((255, 255, 255))
+    """surface.fill((255, 255, 255))
     file = open("testing-images/Lenaclor.ppm", "rb")
     load_ppm(file)
     draw_images()
-    file.close()
+    file.close()"""
 
     done = False
     while not done:
