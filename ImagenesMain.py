@@ -179,7 +179,7 @@ def set_edge_level():
     Label(window, text="Level (0-1): ").grid(row=0, column=0)
     level = Entry(window)
     level.grid(row=0, column=1)
-    Button(window, text="Change", command=lambda: edge_enhance(level.get(), "sobel")).grid(row=0, column=2)
+    Button(window, text="Change", command=lambda: edge_enhance(level.get(), "sobel", True)).grid(row=0, column=2)
 
 
 def set_kernel_size(kernel_type):
@@ -224,7 +224,7 @@ def redraw_img(filtered_image, col):
     draw_ati_image(editableImage)
 
 
-def edge_enhance(level, operator):
+def edge_enhance(level, operator, enhance=False):
     level = float(level)
     if editableImage.image_type == "ppm":
         colors = 3
@@ -245,8 +245,10 @@ def edge_enhance(level, operator):
         g_x = convolve_func_avg(img, h_x, pad, size)
         g_y = convolve_func_avg(img, h_y, pad, size)
         g = np.sqrt(g_x ** 2 + g_y ** 2)
-        new_img = img + g * level
-        new_img = normalize(new_img)
+        if enhance:
+            new_img = normalize(img + g * level)
+        else:
+            new_img = normalize(g)
         if i < 1:
             fin_img = new_img
         else:

@@ -1,10 +1,9 @@
 import numpy as np
 
-r = np.array(((1, 1, 1),
-              (1, 1, 1),
-              (1, 1, 1)
+r = np.array(((1, 2, 3),
+              (4, 5, 6),
+              (7, 8, 9)
               ))
-r = np.array(())
 
 g = np.array(((2, 2, 2),
               (2, 2, 2),
@@ -37,10 +36,15 @@ rgb = np.dstack((rgb, b))
 
 print(rgb)
 
-#rgb2 = np.dstack((r2, g2, b2))
+def rot(array):
+    new_array = array
+    for r in range(array.shape[0]):
+        for c in range(array.shape[1]):
+            check_distance_to_edge(array, (r, c))
 
-print(rgb2)
 
-rgb2 = rgb2.reshape(rgb.shape)
+def check_distance_to_edge(array, pos):
+    pass
 
-#print(rgb2)
+
+rot(r)
