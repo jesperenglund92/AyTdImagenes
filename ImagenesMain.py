@@ -1451,6 +1451,34 @@ class BordersWindow:
         self.btnLaplaceMehtod = Button(self.window, text="Laplace", command=laplace_method)
         self.btnLaplaceMehtod.grid(row=11, column=1)
 
+        Label(self.window, text="Laplace method with incline").grid(row=12, column=0)
+        self.threshold = StringVar()
+        self.txtThreshold = Entry(self.window, textvariable=self.threshold)
+        self.txtThreshold.grid(row=12, column=1)
+        self.btnLaplaceMethodIncline = Button(self.window, text="Incline",
+                                              command=self.laplace_method_incline_wrapper)
+        self.btnLaplaceMethodIncline.grid(row=12, column=3)
+
+        Label(self.window, text="Laplace method Gausssian").grid(row=13, column=0)
+        self.thresholdGaussian = StringVar()
+        Label(self.window, text="Threshold").grid(row=13, column=1)
+        self.txtThresholdGaussian = Entry(self.window, textvariable=self.thresholdGaussian)
+        self.txtThresholdGaussian.grid(row=13, column=2)
+        self.windowSize = StringVar()
+        Label(self.window, text="sigma").grid(row=13, column=3)
+        self.sigma = StringVar()
+        self.txtSigma = Entry(self.window, textvariable=self.sigma)
+        self.txtSigma.grid(row=13, column=4)
+
+        Label(self.window, text="Window size").grid(row=13, column=5)
+        self.txtWindowSize = Entry(self.window, textvariable=self.windowSize)
+        self.txtWindowSize.grid(row=13, column=6)
+        self.btnLaplaceGaussian = Button(self.window, text="Laplace Gaussian", command=self.laplace_gaussian)
+        self.btnLaplaceGaussian.grid(row=13, column=7)
+
+
+
+
     def close_window(self):
         self.window.destroy()
         app.master.focus_set()
@@ -1459,6 +1487,15 @@ class BordersWindow:
         angle = int(self.cbbAngle.get())
         edge_enhance(1, operator, angle)
 
+    def laplace_method_incline_wrapper(self):
+        threshold = int(self.txtThreshold.get())
+        laplace_method_incline(threshold)
+
+    def laplace_gaussian(self):
+        threshold = int(self.txtThresholdGaussian.get())
+        window_size = int(self.txtWindowSize.get())
+        sigma = int(self.txtSigma.get())
+        laplace_method_gaussian(threshold, window_size, sigma)
 
 def border_single_direction(operator, side="horizontal"):
     if operator == "prewitt":
@@ -1486,7 +1523,7 @@ def border_single_direction(operator, side="horizontal"):
     redraw_img(fin_img, True)
 
 
-def laplace_method():
+def apply_laplace_convolve():
     mask = np.array([[0, -1, 0], [-1, 4, -1], [0, -1, 0]])
     fin_img = None
     image = np.array(editableImage.data)
@@ -1499,8 +1536,82 @@ def laplace_method():
         if i < 1:
             fin_img = g_x
         else:
-            fin_img = g_x
-            
+            fin_img = np.dstack((fin_img, g_x))
+    return fin_img
+
+
+def laplace_method():
+    fin_img = apply_laplace_convolve()
+    zero_cross_x = zero_cross(fin_img, editableImage.width, editableImage.height, "horizontal")
+    zero_cross_y = zero_cross(fin_img, editableImage.width, editableImage.height, "vertical")
+
+    editableImage.data = apply_synthesis_and(zero_cross_x, zero_cross_y, editableImage.width, editableImage.height)
+    draw_ati_image(editableImage)
+
+
+def laplace_method_incline(threshold):
+    fin_img = apply_laplace_convolve()
+    zero_cross_incline_x = calculate_derivative(fin_img, editableImage.width, editableImage.height, "horizontal",
+                                                threshold)
+    zero_cross_incline_y = calculate_derivative(fin_img, editableImage.width, editableImage.height, "vertical",
+                                                threshold)
+    editableImage.data = apply_synthesis_or(zero_cross_incline_x, zero_cross_incline_y, editableImage.width,
+                                            editableImage.height)
+    draw_ati_image(editableImage)
+
+
+def laplace_method_gaussian(threshold, size, sigma):
+    # Generar matriz
+    # Convolucionar
+    # Buscar pendiente de cruces por cero
+    colors = 3
+    image = np.array(editableImage.data)
+    pad = int((size - 1) / 2)
+    n_size = (size - 1) /2
+    x,y = np.mgrid[-n_size:n_size+1, -n_size:n_size + 1]
+    k = (-1 / (math.sqrt(2 * math.pi) * math.pow(sigma, 3)))
+    mask = k * (2 - ((x**2 + y**2)/sigma**2)) * np.exp((-1) * (x**2 + y**2)/(2 * sigma ** 2))
+    fin_img = None
+    for i in range(colors):
+        img = image[:, :, i]
+        gauss_img = convolve_func(img, mask, pad, size)
+        if i < 1:
+            fin_img = gauss_img
+        else:
+            fin_img = np.dstack((fin_img, gauss_img))
+
+    zero_cross_incline_x = calculate_derivative(fin_img, editableImage.width, editableImage.height, "horizontal",
+                                                threshold)
+    zero_cross_incline_y = calculate_derivative(fin_img, editableImage.width, editableImage.height, "vertical",
+                                                threshold)
+    editableImage.data = apply_synthesis_or(zero_cross_incline_x, zero_cross_incline_y, editableImage.width,
+                                            editableImage.height)
+    draw_ati_image(editableImage)
+
+def apply_synthesis_and(matrix_x, matrix_y, width, height):
+    new_matrix = []
+    for y in range(height):
+        row = []
+        for x in range(width):
+            color = []
+            for z in range(3):
+                color.append(min(matrix_x[y][x][z], matrix_y[y][x][z]))
+            row.append(color)
+        new_matrix.append(row)
+    return new_matrix
+
+
+def apply_synthesis_or(matrix_x, matrix_y, width, height):
+    new_matrix = []
+    for y in range(height):
+        row = []
+        for x in range(width):
+            color = []
+            for z in range(3):
+                color.append(max(matrix_x[y][x][z], matrix_y[y][x][z]))
+            row.append(color)
+        new_matrix.append(row)
+    return new_matrix
 
 
 def rotate_mask(mask, angle):
@@ -1581,13 +1692,15 @@ def zero_cross(matrix, width, height, side):
             for x in range(width):
                 color = []
                 for z in range(3):
-                    if x == width - 1:
+                    if x == (width - 1):
                         color.append(0)
-                    elif matrix[y][x][z] * matrix[y][x + 1][z] < 0:
+                    elif (matrix[y][x][z] * matrix[y][x + 1][z]) < 0:
                         color.append(255)
-                    elif x < width - 2:
+                    elif x < (width - 2):
                         if matrix[y][x][z] * matrix[y][x + 2][z] < 0 and matrix[y][x + 1][z] == 0:
                             color.append(255)
+                        else:
+                            color.append(0)
                     else:
                         color.append(0)
                 row.append(color)
@@ -1598,13 +1711,15 @@ def zero_cross(matrix, width, height, side):
             for y in range(height):
                 color = []
                 for z in range(3):
-                    if y == height - 1:
+                    if y == (height - 1):
                         color.append(0)
-                    elif matrix[y][x][z] * matrix[y + 1][x][z] < 0:
+                    elif (matrix[y][x][z] * matrix[y + 1][x][z]) < 0:
                         color.append(255)
                     elif y < height - 2:
-                        if matrix[y][x][z] * matrix[y + 2][x][z] < 0 and matrix[y + 1][x][z] == 0:
+                        if (matrix[y][x][z] * matrix[y + 2][x][z]) < 0 and matrix[y + 1][x][z] == 0:
                             color.append(255)
+                        else:
+                            color.append(0)
                     else:
                         color.append(0)
                 row.append(color)
@@ -1635,6 +1750,8 @@ def calculate_derivative(matrix, width, height, side, threshold):
                     elif x < width - 2:
                         if matrix[y][x][z] * matrix[y][x + 2][z] < 0 and matrix[y][x + 1][z] == 0:
                             pixel_color.append(apply_threshold(matrix[y][x][z], matrix[y][x + 2][z], threshold))
+                        else:
+                            pixel_color.append(0)
                     else:
                         pixel_color.append(0)
                 row.append(pixel_color)
@@ -1652,6 +1769,8 @@ def calculate_derivative(matrix, width, height, side, threshold):
                     elif y < height - 2:
                         if matrix[y][x][z] * matrix[y + 2][x][z] < 0 and matrix[y + 1][x][z] == 0:
                             pixel_color.append(apply_threshold(matrix[y][x][z], matrix[y + 2][x][z], threshold))
+                        else:
+                            pixel_color.append(0)
                     else:
                         pixel_color.append(0)
                 row.append(pixel_color)
@@ -1692,7 +1811,7 @@ def edge_enhance(level, operator, angle=0):
         g_x = convolve_func(img, h_x, pad, size)
         g_y = convolve_func(img, h_y, pad, size)
         g = np.sqrt(g_x ** 2 + g_y ** 2)
-        new_img = img + g * level
+        """new_img = img + g * level"""
         new_img = normalize(new_img)
         if i < 1:
             fin_img = new_img
