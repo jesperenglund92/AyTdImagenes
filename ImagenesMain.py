@@ -64,6 +64,7 @@ class Window(Frame):
 
         self.effect_menu = Menu(self.menu)
         self.effect_menu.add_command(label="Borders Detection", command=borders_window)
+        self.effect_menu.add_command(label="Diffusion", command=diffusion_window)
         self.menu.add_cascade(label="Effects", menu=self.effect_menu)
 
         Label(master, text="x: ").grid(row=0, column=0)
@@ -1476,9 +1477,6 @@ class BordersWindow:
         self.btnLaplaceGaussian = Button(self.window, text="Laplace Gaussian", command=self.laplace_gaussian)
         self.btnLaplaceGaussian.grid(row=13, column=7)
 
-
-
-
     def close_window(self):
         self.window.destroy()
         app.master.focus_set()
@@ -1496,6 +1494,7 @@ class BordersWindow:
         window_size = int(self.txtWindowSize.get())
         sigma = int(self.txtSigma.get())
         laplace_method_gaussian(threshold, window_size, sigma)
+
 
 def border_single_direction(operator, side="horizontal"):
     if operator == "prewitt":
@@ -1567,10 +1566,10 @@ def laplace_method_gaussian(threshold, size, sigma):
     colors = 3
     image = np.array(editableImage.data)
     pad = int((size - 1) / 2)
-    n_size = (size - 1) /2
-    x,y = np.mgrid[-n_size:n_size+1, -n_size:n_size + 1]
+    n_size = (size - 1) / 2
+    x, y = np.mgrid[-n_size:n_size + 1, -n_size:n_size + 1]
     k = (-1 / (math.sqrt(2 * math.pi) * math.pow(sigma, 3)))
-    mask = k * (2 - ((x**2 + y**2)/sigma**2)) * np.exp((-1) * (x**2 + y**2)/(2 * sigma ** 2))
+    mask = k * (2 - ((x ** 2 + y ** 2) / sigma ** 2)) * np.exp((-1) * (x ** 2 + y ** 2) / (2 * sigma ** 2))
     fin_img = None
     for i in range(colors):
         img = image[:, :, i]
@@ -1587,6 +1586,7 @@ def laplace_method_gaussian(threshold, size, sigma):
     editableImage.data = apply_synthesis_or(zero_cross_incline_x, zero_cross_incline_y, editableImage.width,
                                             editableImage.height)
     draw_ati_image(editableImage)
+
 
 def apply_synthesis_and(matrix_x, matrix_y, width, height):
     new_matrix = []
@@ -1823,6 +1823,127 @@ def edge_enhance(level, operator, angle=0, enhance=False):
         redraw_img(fin_img, False)
     else:
         redraw_img(fin_img, True)
+
+
+#
+# Diffusion
+#
+
+def diffusion_window():
+    DifussionWindow()
+
+
+class DifussionWindow:
+    def __init__(self):
+        self.window = Tk()
+        self.window.focus_set()
+        self.window.title("Diffusion")
+        self.window.geometry("520x360")
+
+        Label(self.window, text="times variable (T):").grid(row=0, column=0)
+        self.times = StringVar()
+        self.txtTimes = Entry(self.window, textvariable=self.times)
+        self.txtTimes.grid(row=0, column=1)
+        Label(self.window, text="Sigma").grid(row=0, column=2)
+        self.sigma = StringVar()
+        self.txtSigma = Entry(self.window, textvariable=self.sigma)
+        self.txtSigma.grid(row=0, column=3)
+        Label(self.window, text="Isotrópica").grid(row=1, column=0)
+        self.btnDiffusionIsotropic = Button(self.window, text="Apply diffusion",
+                                            command=self.isotropic_diffusion_wrapper)
+        self.btnDiffusionIsotropic.grid(row=1, column=1)
+        Label(self.window, text="Anisotropic").grid(row=2, column=0)
+        self.btnDiffusionAnisotropic = Button(self.window, text="Apply diffusion",
+                                              command=self.anisotropic_diffusion_wrapper)
+        self.btnDiffusionAnisotropic.grid(row=2, column=1)
+
+    def isotropic_diffusion_wrapper(self):
+        times = int(self.txtTimes.get())
+        isotropic_diffusion(times)
+
+    def anisotropic_diffusion_wrapper(self):
+        times = int(self.txtTimes.get())
+        sigma = int(self.txtSigma.get())
+        anisotropic_diffusion(times, sigma)
+
+
+def isotropic_diffusion(times):
+    new_matrix = editableImage.data
+    width = editableImage.width
+    height = editableImage.height
+    for t in range(times):
+        new_matrix = apply_isotropic(new_matrix, width, height)
+    editableImage.data = new_matrix
+    draw_ati_image(editableImage)
+    return
+
+
+def anisotropic_diffusion(times, sigma):
+    new_matrix = editableImage.data
+    width = editableImage.width
+    height = editableImage.height
+    for t in range(times):
+        new_matrix = apply_anisotropic(new_matrix, width, height, sigma)
+
+    editableImage.data = new_matrix
+    draw_ati_image(editableImage)
+    return
+
+
+def apply_isotropic(matrix, width, height):
+    new_matrix = []
+    for y in range(height):
+        row = []
+        for x in range(width):
+            pixel_color = []
+            for z in range(3):
+                dn = direction_difference(matrix, width, height, z, x, y, 1, 0)
+                ds = direction_difference(matrix, width, height, z, x, y, -1, 0)
+                de = direction_difference(matrix, width, height, z, x, y, 0, 1)
+                do = direction_difference(matrix, width, height, z, x, y, 0, -1)
+                pixel_color.append(matrix[y][x][z] + 0.25 * (dn + ds + de + do))
+            row.append(pixel_color)
+        new_matrix.append(row)
+    return new_matrix
+
+
+def apply_anisotropic(matrix, width, height, sigma):
+    new_matrix = []
+    for y in range(height):
+        row = []
+        for x in range(width):
+            pixel_color = []
+            for z in range(3):
+                dn = direction_difference(matrix, width, height, z, x, y, 1, 0)
+                ds = direction_difference(matrix, width, height, z, x, y, -1, 0)
+                de = direction_difference(matrix, width, height, z, x, y, 0, 1)
+                do = direction_difference(matrix, width, height, z, x, y, 0, -1)
+                pixel_color.append(matrix[y][x][z] + 0.25 * (dn * leclerc_function(dn, sigma) +
+                                                             ds * leclerc_function(ds, sigma) +
+                                                             de * leclerc_function(de, sigma) +
+                                                             do * leclerc_function(do, sigma)))
+            row.append(pixel_color)
+        new_matrix.append(row)
+    return new_matrix
+
+
+def direction_difference(matrix, width, height, range_color, x, y, difx, dify):
+    new_x = x + difx
+    new_y = y + dify
+
+    value = 0
+    if new_x < 0 or new_x >= width:
+        value = 0
+    elif new_y < 0 or new_y >= height:
+        value = 0
+    else:
+        value = matrix[new_y][new_x][range_color]
+    return value - matrix[y][x][range_color]
+
+
+def leclerc_function(value, sigma):
+    ans = np.exp((-1) * (value ** 2) / (sigma ** 2))
+    return ans
 
 
 #
