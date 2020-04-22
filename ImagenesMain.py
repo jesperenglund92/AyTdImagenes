@@ -183,7 +183,7 @@ def set_edge_level():
     Label(window, text="Level (0-1): ").grid(row=0, column=0)
     level = Entry(window)
     level.grid(row=0, column=1)
-    Button(window, text="Change", command=lambda: edge_enhance(level.get(), "sobel")).grid(row=0, column=2)
+    Button(window, text="Change", command=lambda: edge_enhance(level.get(), "sobel", True)).grid(row=0, column=2)
 
 
 def set_kernel_size(kernel_type):
@@ -1778,7 +1778,7 @@ def calculate_derivative(matrix, width, height, side, threshold):
     return new_matrix
 
 
-def edge_enhance(level, operator, angle=0):
+def edge_enhance(level, operator, angle=0, enhance=False):
     level = float(level)
     if editableImage.image_type == "ppm":
         colors = 3
@@ -1811,6 +1811,8 @@ def edge_enhance(level, operator, angle=0):
         g_x = convolve_func(img, h_x, pad, size)
         g_y = convolve_func(img, h_y, pad, size)
         g = np.sqrt(g_x ** 2 + g_y ** 2)
+        if enhance:
+            new_img = img + g * level
         """new_img = img + g * level"""
         new_img = normalize(new_img)
         if i < 1:
