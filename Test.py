@@ -47,4 +47,8 @@ def check_distance_to_edge(array, pos):
     pass
 
 
+x, y = np.mgrid[-7:7 + 1, -7:7 + 1]
+
+print(x)
+
 rot(r)
