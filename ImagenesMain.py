@@ -1,4 +1,4 @@
-from tkinter import filedialog, font, messagebox
+from tkinter import filedialog, font, messagebox, ttk
 import pygame
 from pygame.locals import *
 from ATIImage import *
@@ -61,6 +61,11 @@ class Window(Frame):
         self.view_menu.add_command(label="Histogram", command=histogram_window)
         # self.view_menu.add_command(label="Equalize", command=equalize_histogram)
         self.menu.add_cascade(label="View", menu=self.view_menu)
+
+        self.effect_menu = Menu(self.menu)
+        self.effect_menu.add_command(label="Borders Detection", command=borders_window)
+        self.effect_menu.add_command(label="Diffusion", command=diffusion_window)
+        self.menu.add_cascade(label="Effects", menu=self.effect_menu)
 
         Label(master, text="x: ").grid(row=0, column=0)
         Label(master, text="y: ").grid(row=1, column=0)
@@ -224,41 +229,6 @@ def redraw_img(filtered_image, col):
     draw_ati_image(editableImage)
 
 
-def edge_enhance(level, operator, enhance=False):
-    level = float(level)
-    if editableImage.image_type == "ppm":
-        colors = 3
-    else:
-        colors = 1
-    fin_img = None
-    image = np.array(editableImage.data)
-    if operator == "prewitt":
-        h_x = np.array([[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]])
-        h_y = np.array([[-1, -1, -1], [0, 0, 0], [1, 1, 1]])
-    else:
-        h_x = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
-        h_y = np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
-    size = 3
-    pad = int((size - 1) / 2)
-    for i in range(colors):
-        img = image[:, :, i]
-        g_x = convolve_func_avg(img, h_x, pad, size)
-        g_y = convolve_func_avg(img, h_y, pad, size)
-        g = np.sqrt(g_x ** 2 + g_y ** 2)
-        if enhance:
-            new_img = normalize(img + g * level)
-        else:
-            new_img = normalize(g)
-        if i < 1:
-            fin_img = new_img
-        else:
-            fin_img = np.dstack((fin_img, new_img))
-    if colors == 1:
-        redraw_img(fin_img, False)
-    else:
-        redraw_img(fin_img, True)
-
-
 def filter_image_gauss(size, sigma):
     if editableImage.image_type == "ppm":
         colors = 3
@@ -276,7 +246,7 @@ def filter_image_gauss(size, sigma):
     fin_img = None
     for i in range(colors):
         img = image[:, :, i]
-        gauss_img = convolve_func_avg(img, mask, pad, size)
+        gauss_img = convolve_func(img, mask, pad, size)
         if i < 1:
             fin_img = gauss_img
         else:
@@ -346,7 +316,7 @@ def filter_image_avg(size):
     fin_img = None
     for i in range(colors):
         img = image[:, :, i]
-        avg = convolve_func_avg(img, mask, pad, size)
+        avg = convolve_func(img, mask, pad, size)
         if i < 1:
             fin_img = avg
         else:
@@ -383,7 +353,7 @@ def convolve_func_mdn(img, pad, size):
     return output
 
 
-def convolve_func_avg(img, mask, pad, size):
+def convolve_func(img, mask, pad, size):
     output = np.zeros_like(img)
     image_padded = np.zeros((img.shape[0] + pad * 2, img.shape[1] + pad * 2))
     image_padded[pad:-pad, pad:-pad] = img
@@ -1403,6 +1373,577 @@ def normalize(cum_sum_pixel):
     cum_sum_pixel = np.rint(cum_sum_pixel)
     cum_sum_pixel = cum_sum_pixel.astype(int)
     return cum_sum_pixel
+
+
+#
+#   Effects
+#
+
+def borders_window():
+    BordersWindow()
+
+
+class BordersWindow:
+    def __init__(self):
+        self.window = Tk()
+        self.window.focus_set()
+        self.window.title("Effects")
+        self.window.geometry("520x360")
+
+        # -------------------------- Single operators --------------------------
+        Label(self.window, text="Horizontal Prewitt").grid(row=1, column=0)
+        self.btnHorizontalPrewitt = Button(self.window, text="Horizontal Prewitt",
+                                           command=lambda: border_single_direction("prewitt"))
+        self.btnHorizontalPrewitt.grid(row=1, column=1)
+
+        Label(self.window, text="Vertical Prewitt").grid(row=1, column=2)
+        self.btnVerticalPrewitt = Button(self.window, text="Vertical Prewitt",
+                                         command=lambda: border_single_direction("prewitt", "vertical"))
+        self.btnVerticalPrewitt.grid(row=1, column=3)
+
+        Label(self.window, text="Horizontal Sobel").grid(row=2, column=0)
+        self.btnHorizontalSobel = Button(self.window, text="Horizontal Sobel",
+                                         command=lambda: border_single_direction("sobel"))
+        self.btnHorizontalSobel.grid(row=2, column=1)
+
+        Label(self.window, text="Vertical Sobel").grid(row=2, column=2)
+        self.btnVerticalSobel = Button(self.window, text="Vertical Sobel",
+                                       command=lambda: border_single_direction("sobel", "vertical"))
+        self.btnVerticalSobel.grid(row=2, column=3)
+
+        # -------------------------- Gradient Operators -----------------------------------
+
+        Label(self.window, text="Prewitt").grid(row=3, column=0)
+        self.btnHorizontalPrewitt = Button(self.window, text="Prewitt Abs", command=lambda: edge_enhance(1, "prewitt"))
+        self.btnHorizontalPrewitt.grid(row=3, column=1)
+
+        Label(self.window, text="Sobel").grid(row=4, column=0)
+        self.btnHorizontalPrewitt = Button(self.window, text="Sobel Abs", command=lambda: edge_enhance(1, "sobel"))
+        self.btnHorizontalPrewitt.grid(row=4, column=1)
+
+        # ----------------------- Directional operators -----------------------
+        self.angle = StringVar()
+        posible_angles = [0, 45, 90, 135, 180, 225, 270, 315]
+
+        Label(self.window, text="Directional Operators").grid(row=5, column=0)
+        self.cbbAngle = ttk.Combobox(self.window, textvariable=self.angle, values=posible_angles)
+        self.cbbAngle.grid(row=5, column=1)
+        self.cbbAngle.current(0)
+
+        Label(self.window, text="Prewitt").grid(row=6, column=0)
+        self.btnDirectionalPrewitt = Button(self.window, text="Prewitt",
+                                            command=lambda: self.directional_operator("prewitt"))
+        self.btnDirectionalPrewitt.grid(row=6, column=1)
+
+        Label(self.window, text="Sobel").grid(row=7, column=0)
+        self.btnDirectionalSobel = Button(self.window, text="Sobel", command=lambda: self.directional_operator("sobel"))
+        self.btnDirectionalSobel.grid(row=7, column=1)
+
+        Label(self.window, text="Kirsh").grid(row=8, column=0)
+        self.btnDirectionalKirsh = Button(self.window, text="Kirsh", command=lambda: self.directional_operator("kirsh"))
+        self.btnDirectionalKirsh.grid(row=8, column=1)
+
+        Label(self.window, text="Other").grid(row=9, column=0)
+        self.btnDirectionalOther = Button(self.window, text="Other", command=lambda: self.directional_operator("other"))
+        self.btnDirectionalOther.grid(row=9, column=1)
+
+        # ------------------------------- Laplace methods -----------------------
+        Label(self.window, text="Laplace method").grid(row=11, column=0)
+        self.btnLaplaceMehtod = Button(self.window, text="Laplace", command=laplace_method)
+        self.btnLaplaceMehtod.grid(row=11, column=1)
+
+        Label(self.window, text="Laplace method with incline").grid(row=12, column=0)
+        self.threshold = StringVar()
+        self.txtThreshold = Entry(self.window, textvariable=self.threshold)
+        self.txtThreshold.grid(row=12, column=1)
+        self.btnLaplaceMethodIncline = Button(self.window, text="Incline",
+                                              command=self.laplace_method_incline_wrapper)
+        self.btnLaplaceMethodIncline.grid(row=12, column=3)
+
+        Label(self.window, text="Laplace method Gausssian").grid(row=13, column=0)
+        self.thresholdGaussian = StringVar()
+        Label(self.window, text="Threshold").grid(row=13, column=1)
+        self.txtThresholdGaussian = Entry(self.window, textvariable=self.thresholdGaussian)
+        self.txtThresholdGaussian.grid(row=13, column=2)
+        self.windowSize = StringVar()
+        Label(self.window, text="sigma").grid(row=13, column=3)
+        self.sigma = StringVar()
+        self.txtSigma = Entry(self.window, textvariable=self.sigma)
+        self.txtSigma.grid(row=13, column=4)
+
+        Label(self.window, text="Window size").grid(row=13, column=5)
+        self.txtWindowSize = Entry(self.window, textvariable=self.windowSize)
+        self.txtWindowSize.grid(row=13, column=6)
+        self.btnLaplaceGaussian = Button(self.window, text="Laplace Gaussian", command=self.laplace_gaussian)
+        self.btnLaplaceGaussian.grid(row=13, column=7)
+
+    def close_window(self):
+        self.window.destroy()
+        app.master.focus_set()
+
+    def directional_operator(self, operator):
+        angle = int(self.cbbAngle.get())
+        edge_enhance(1, operator, angle)
+
+    def laplace_method_incline_wrapper(self):
+        threshold = int(self.txtThreshold.get())
+        laplace_method_incline(threshold)
+
+    def laplace_gaussian(self):
+        threshold = int(self.txtThresholdGaussian.get())
+        window_size = int(self.txtWindowSize.get())
+        sigma = int(self.txtSigma.get())
+        laplace_method_gaussian(threshold, window_size, sigma)
+
+
+def border_single_direction(operator, side="horizontal"):
+    if operator == "prewitt":
+        mask = np.array([[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]])
+    elif operator == "sobel":
+        mask = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
+    if side == "vertical":
+        mask = rotate_mask(mask, 90)
+
+    print(mask)
+
+    fin_img = None
+    image = np.array(editableImage.data)
+    size = 3
+    pad = int((size - 1) / 2)
+    colors = 3
+    for i in range(colors):
+        img = image[:, :, i]
+        g_x = convolve_func(img, mask, pad, size)
+        new_img = normalize(g_x)
+        if i < 1:
+            fin_img = new_img
+        else:
+            fin_img = np.dstack((fin_img, new_img))
+    redraw_img(fin_img, True)
+
+
+def apply_laplace_convolve():
+    mask = np.array([[0, -1, 0], [-1, 4, -1], [0, -1, 0]])
+    fin_img = None
+    image = np.array(editableImage.data)
+    size = 3
+    pad = int((size - 1) / 2)
+    colors = 3
+    for i in range(colors):
+        img = image[:, :, i]
+        g_x = convolve_func(img, mask, pad, size)
+        if i < 1:
+            fin_img = g_x
+        else:
+            fin_img = np.dstack((fin_img, g_x))
+    return fin_img
+
+
+def laplace_method():
+    fin_img = apply_laplace_convolve()
+    zero_cross_x = zero_cross(fin_img, editableImage.width, editableImage.height, "horizontal")
+    zero_cross_y = zero_cross(fin_img, editableImage.width, editableImage.height, "vertical")
+
+    editableImage.data = apply_synthesis_and(zero_cross_x, zero_cross_y, editableImage.width, editableImage.height)
+    draw_ati_image(editableImage)
+
+
+def laplace_method_incline(threshold):
+    fin_img = apply_laplace_convolve()
+    zero_cross_incline_x = calculate_derivative(fin_img, editableImage.width, editableImage.height, "horizontal",
+                                                threshold)
+    zero_cross_incline_y = calculate_derivative(fin_img, editableImage.width, editableImage.height, "vertical",
+                                                threshold)
+    editableImage.data = apply_synthesis_or(zero_cross_incline_x, zero_cross_incline_y, editableImage.width,
+                                            editableImage.height)
+    draw_ati_image(editableImage)
+
+
+def laplace_method_gaussian(threshold, size, sigma):
+    # Generar matriz
+    # Convolucionar
+    # Buscar pendiente de cruces por cero
+    colors = 3
+    image = np.array(editableImage.data)
+    pad = int((size - 1) / 2)
+    n_size = (size - 1) / 2
+    x, y = np.mgrid[-n_size:n_size + 1, -n_size:n_size + 1]
+    k = (-1 / (math.sqrt(2 * math.pi) * math.pow(sigma, 3)))
+    mask = k * (2 - ((x ** 2 + y ** 2) / sigma ** 2)) * np.exp((-1) * (x ** 2 + y ** 2) / (2 * sigma ** 2))
+    fin_img = None
+    for i in range(colors):
+        img = image[:, :, i]
+        gauss_img = convolve_func(img, mask, pad, size)
+        if i < 1:
+            fin_img = gauss_img
+        else:
+            fin_img = np.dstack((fin_img, gauss_img))
+
+    zero_cross_incline_x = calculate_derivative(fin_img, editableImage.width, editableImage.height, "horizontal",
+                                                threshold)
+    zero_cross_incline_y = calculate_derivative(fin_img, editableImage.width, editableImage.height, "vertical",
+                                                threshold)
+    editableImage.data = apply_synthesis_or(zero_cross_incline_x, zero_cross_incline_y, editableImage.width,
+                                            editableImage.height)
+    draw_ati_image(editableImage)
+
+
+def apply_synthesis_and(matrix_x, matrix_y, width, height):
+    new_matrix = []
+    for y in range(height):
+        row = []
+        for x in range(width):
+            color = []
+            for z in range(3):
+                color.append(min(matrix_x[y][x][z], matrix_y[y][x][z]))
+            row.append(color)
+        new_matrix.append(row)
+    return new_matrix
+
+
+def apply_synthesis_or(matrix_x, matrix_y, width, height):
+    new_matrix = []
+    for y in range(height):
+        row = []
+        for x in range(width):
+            color = []
+            for z in range(3):
+                color.append(max(matrix_x[y][x][z], matrix_y[y][x][z]))
+            row.append(color)
+        new_matrix.append(row)
+    return new_matrix
+
+
+def rotate_mask(mask, angle):
+    if angle == 0:
+        return mask
+    steps = angle / 45
+    steps = steps % 8
+    while steps > 0:
+        rotate_matrix(mask)
+        steps = steps - 1
+    return mask
+
+
+def rotate_matrix(mat):
+    if not len(mat):
+        return
+
+        """ 
+            top : starting row index 
+            bottom : ending row index 
+            left : starting column index 
+            right : ending column index 
+        """
+
+    top = 0
+    bottom = len(mat) - 1
+
+    left = 0
+    right = len(mat[0]) - 1
+
+    while left < right and top < bottom:
+
+        # Store the first element of next row,
+        # this element will replace first element of
+        # current row
+        prev = mat[top + 1][left]
+
+        # Move elements of top row one step right
+        for i in range(left, right + 1):
+            curr = mat[top][i]
+            mat[top][i] = prev
+            prev = curr
+
+        top += 1
+
+        # Move elements of rightmost column one step downwards
+        for i in range(top, bottom + 1):
+            curr = mat[i][right]
+            mat[i][right] = prev
+            prev = curr
+
+        right -= 1
+
+        # Move elements of bottom row one step left
+        for i in range(right, left - 1, -1):
+            curr = mat[bottom][i]
+            mat[bottom][i] = prev
+            prev = curr
+
+        bottom -= 1
+
+        # Move elements of leftmost column one step upwards
+        for i in range(bottom, top - 1, -1):
+            curr = mat[i][left]
+            mat[i][left] = prev
+            prev = curr
+
+        left += 1
+
+    return mat
+
+
+def zero_cross(matrix, width, height, side):
+    new_matrix = []
+    if side == "horizontal":
+        for y in range(height):
+            row = []
+            for x in range(width):
+                color = []
+                for z in range(3):
+                    if x == (width - 1):
+                        color.append(0)
+                    elif (matrix[y][x][z] * matrix[y][x + 1][z]) < 0:
+                        color.append(255)
+                    elif x < (width - 2):
+                        if matrix[y][x][z] * matrix[y][x + 2][z] < 0 and matrix[y][x + 1][z] == 0:
+                            color.append(255)
+                        else:
+                            color.append(0)
+                    else:
+                        color.append(0)
+                row.append(color)
+            new_matrix.append(row)
+    else:
+        for x in range(width):
+            row = []
+            for y in range(height):
+                color = []
+                for z in range(3):
+                    if y == (height - 1):
+                        color.append(0)
+                    elif (matrix[y][x][z] * matrix[y + 1][x][z]) < 0:
+                        color.append(255)
+                    elif y < height - 2:
+                        if (matrix[y][x][z] * matrix[y + 2][x][z]) < 0 and matrix[y + 1][x][z] == 0:
+                            color.append(255)
+                        else:
+                            color.append(0)
+                    else:
+                        color.append(0)
+                row.append(color)
+            new_matrix.append(row)
+    return new_matrix
+
+
+def apply_threshold(num1, num2, threshold):
+    a = abs(num1)
+    b = abs(num2)
+    if (a + b) >= threshold:
+        return 255
+    return 0
+
+
+def calculate_derivative(matrix, width, height, side, threshold):
+    new_matrix = []
+    if side == "horizontal":
+        for y in range(height):
+            row = []
+            for x in range(width):
+                pixel_color = []
+                for z in range(3):
+                    if x == width - 1:
+                        pixel_color.append(0)
+                    elif matrix[y][x][z] * matrix[y][x + 1][z] < 0:
+                        pixel_color.append(apply_threshold(matrix[y][x][z], matrix[y][x + 1][z], threshold))
+                    elif x < width - 2:
+                        if matrix[y][x][z] * matrix[y][x + 2][z] < 0 and matrix[y][x + 1][z] == 0:
+                            pixel_color.append(apply_threshold(matrix[y][x][z], matrix[y][x + 2][z], threshold))
+                        else:
+                            pixel_color.append(0)
+                    else:
+                        pixel_color.append(0)
+                row.append(pixel_color)
+            new_matrix.append(row)
+    else:
+        for x in range(width):
+            row = []
+            for y in range(height):
+                pixel_color = []
+                for z in range(3):
+                    if y == height - 1:
+                        pixel_color.append(0)
+                    elif matrix[y][x][z] * matrix[y + 1][x][z] < 0:
+                        pixel_color.append(apply_threshold(matrix[y][x][z], matrix[y + 1][x][z], threshold))
+                    elif y < height - 2:
+                        if matrix[y][x][z] * matrix[y + 2][x][z] < 0 and matrix[y + 1][x][z] == 0:
+                            pixel_color.append(apply_threshold(matrix[y][x][z], matrix[y + 2][x][z], threshold))
+                        else:
+                            pixel_color.append(0)
+                    else:
+                        pixel_color.append(0)
+                row.append(pixel_color)
+            new_matrix.append(row)
+    return new_matrix
+
+
+def edge_enhance(level, operator, angle=0, enhance=False):
+    level = float(level)
+    if editableImage.image_type == "ppm":
+        colors = 3
+    else:
+        colors = 1
+    fin_img = None
+    image = np.array(editableImage.data)
+    if operator == "prewitt":
+        h_x = np.array([[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]])
+        h_y = np.array([[-1, -1, -1], [0, 0, 0], [1, 1, 1]])
+    elif operator == "sobel":
+        h_x = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
+        h_y = np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
+    elif operator == "kirsh":
+        h_x = np.array([[5, -3, -3], [5, 0, -3], [5, -3, -3]])
+        h_y = np.array([[5, 5, 5], [-3, 0, -3], [-3, -3, -3]])
+    elif operator == "other":
+        h_x = np.array([[1, 1, -1], [1, -2, -1], [1, 1, -1]])
+        h_y = np.array([[1, 1, 1], [1, -2, 1], [-1, -1, -1]])
+    elif operator == "laplace":
+        h_x = np.array([[0, -1, 0], [-1, 4, -1], [0, -1, 0]])
+        h_y = np.array([[0, -1, 0], [-1, 4, -1], [0, -1, 0]])
+
+    h_x = rotate_mask(h_x, angle)
+    h_y = rotate_mask(h_y, angle)
+    size = 3
+    pad = int((size - 1) / 2)
+    for i in range(colors):
+        img = image[:, :, i]
+        g_x = convolve_func(img, h_x, pad, size)
+        g_y = convolve_func(img, h_y, pad, size)
+        g = np.sqrt(g_x ** 2 + g_y ** 2)
+        if enhance:
+            new_img = img + g * level
+        """new_img = img + g * level"""
+        new_img = normalize(new_img)
+        if i < 1:
+            fin_img = new_img
+        else:
+            fin_img = np.dstack((fin_img, new_img))
+    if colors == 1:
+        redraw_img(fin_img, False)
+    else:
+        redraw_img(fin_img, True)
+
+
+#
+# Diffusion
+#
+
+def diffusion_window():
+    DifussionWindow()
+
+
+class DifussionWindow:
+    def __init__(self):
+        self.window = Tk()
+        self.window.focus_set()
+        self.window.title("Diffusion")
+        self.window.geometry("520x360")
+
+        Label(self.window, text="times variable (T):").grid(row=0, column=0)
+        self.times = StringVar()
+        self.txtTimes = Entry(self.window, textvariable=self.times)
+        self.txtTimes.grid(row=0, column=1)
+        Label(self.window, text="Sigma").grid(row=0, column=2)
+        self.sigma = StringVar()
+        self.txtSigma = Entry(self.window, textvariable=self.sigma)
+        self.txtSigma.grid(row=0, column=3)
+        Label(self.window, text="Isotrópica").grid(row=1, column=0)
+        self.btnDiffusionIsotropic = Button(self.window, text="Apply diffusion",
+                                            command=self.isotropic_diffusion_wrapper)
+        self.btnDiffusionIsotropic.grid(row=1, column=1)
+        Label(self.window, text="Anisotropic").grid(row=2, column=0)
+        self.btnDiffusionAnisotropic = Button(self.window, text="Apply diffusion",
+                                              command=self.anisotropic_diffusion_wrapper)
+        self.btnDiffusionAnisotropic.grid(row=2, column=1)
+
+    def isotropic_diffusion_wrapper(self):
+        times = int(self.txtTimes.get())
+        isotropic_diffusion(times)
+
+    def anisotropic_diffusion_wrapper(self):
+        times = int(self.txtTimes.get())
+        sigma = int(self.txtSigma.get())
+        anisotropic_diffusion(times, sigma)
+
+
+def isotropic_diffusion(times):
+    new_matrix = editableImage.data
+    width = editableImage.width
+    height = editableImage.height
+    for t in range(times):
+        new_matrix = apply_isotropic(new_matrix, width, height)
+    editableImage.data = new_matrix
+    draw_ati_image(editableImage)
+    return
+
+
+def anisotropic_diffusion(times, sigma):
+    new_matrix = editableImage.data
+    width = editableImage.width
+    height = editableImage.height
+    for t in range(times):
+        new_matrix = apply_anisotropic(new_matrix, width, height, sigma)
+
+    editableImage.data = new_matrix
+    draw_ati_image(editableImage)
+    return
+
+
+def apply_isotropic(matrix, width, height):
+    new_matrix = []
+    for y in range(height):
+        row = []
+        for x in range(width):
+            pixel_color = []
+            for z in range(3):
+                dn = direction_difference(matrix, width, height, z, x, y, 1, 0)
+                ds = direction_difference(matrix, width, height, z, x, y, -1, 0)
+                de = direction_difference(matrix, width, height, z, x, y, 0, 1)
+                do = direction_difference(matrix, width, height, z, x, y, 0, -1)
+                pixel_color.append(matrix[y][x][z] + 0.25 * (dn + ds + de + do))
+            row.append(pixel_color)
+        new_matrix.append(row)
+    return new_matrix
+
+
+def apply_anisotropic(matrix, width, height, sigma):
+    new_matrix = []
+    for y in range(height):
+        row = []
+        for x in range(width):
+            pixel_color = []
+            for z in range(3):
+                dn = direction_difference(matrix, width, height, z, x, y, 1, 0)
+                ds = direction_difference(matrix, width, height, z, x, y, -1, 0)
+                de = direction_difference(matrix, width, height, z, x, y, 0, 1)
+                do = direction_difference(matrix, width, height, z, x, y, 0, -1)
+                pixel_color.append(matrix[y][x][z] + 0.25 * (dn * leclerc_function(dn, sigma) +
+                                                             ds * leclerc_function(ds, sigma) +
+                                                             de * leclerc_function(de, sigma) +
+                                                             do * leclerc_function(do, sigma)))
+            row.append(pixel_color)
+        new_matrix.append(row)
+    return new_matrix
+
+
+def direction_difference(matrix, width, height, range_color, x, y, difx, dify):
+    new_x = x + difx
+    new_y = y + dify
+
+    value = 0
+    if new_x < 0 or new_x >= width:
+        value = 0
+    elif new_y < 0 or new_y >= height:
+        value = 0
+    else:
+        value = matrix[new_y][new_x][range_color]
+    return value - matrix[y][x][range_color]
+
+
+def leclerc_function(value, sigma):
+    ans = np.exp((-1) * (value ** 2) / (sigma ** 2))
+    return ans
 
 
 #
