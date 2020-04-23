@@ -131,3 +131,7 @@ class ATIRandom:
     @classmethod
     def has_to_apply(cls, value):
         return cls.random() <= value
+
+    @classmethod
+    def rand_int_between_range(cls, min_value, max_value):
+        return int(cls.random() * (max_value - min_value + 1) + min_value)

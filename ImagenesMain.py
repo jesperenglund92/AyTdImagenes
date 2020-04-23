@@ -65,6 +65,7 @@ class Window(Frame):
         self.effect_menu = Menu(self.menu)
         self.effect_menu.add_command(label="Borders Detection", command=borders_window)
         self.effect_menu.add_command(label="Diffusion", command=diffusion_window)
+        self.effect_menu.add_command(label="Thresholding Algoritms", command=thresholding_algoritm_window)
         self.menu.add_cascade(label="Effects", menu=self.effect_menu)
 
         Label(master, text="x: ").grid(row=0, column=0)
@@ -1946,6 +1947,212 @@ def leclerc_function(value, sigma):
     return ans
 
 
+#
+# Global Thresholding
+#
+
+def thresholding_algoritm_window():
+    ThresholdingAlgoritmWindow()
+
+
+class ThresholdingAlgoritmWindow:
+    def __init__(self):
+        self.window = Tk()
+        self.window.focus_set()
+        self.window.title("Thresholding Algorithms")
+        self.window.geometry("520x360")
+
+        # ------------------------ Global Thresholding ----------------
+        Label(self.window, text="Global Thresholding Algoritmn").grid(row=0, column=0)
+        self.btnGlobalThresholding = Button(self.window, text="Global thresholding", command=self.global_thresholding)
+        self.btnGlobalThresholding.grid(row=0, column=1)
+
+        # ------------------------ Otsu algorithm ----------------------
+        Label(self.window, text="Otsu algoritm").grid(row=1, column=0)
+        self.btnOtsuThresholding = Button(self.window, text="Otsu thresholding", command=self.otsu_thresholding_wrapper)
+        self.btnOtsuThresholding.grid(row=1, column=1)
+
+        self.thresholdR = StringVar()
+        self.thresholdG = StringVar()
+        self.thresholdB = StringVar()
+
+        Label(self.window, text="Calculated thresholds").grid(row=4, column=0)
+        Label(self.window, text="R:").grid(row=5, column=0)
+        self.lblRThreshold = Label(self.window, text="0", textvariable=self.thresholdR).grid(row=5, column=1)
+        Label(self.window, text="G:").grid(row=6, column=0)
+        self.lblGThreshold = Label(self.window, text="0", textvariable=self.thresholdG).grid(row=6, column=1)
+        Label(self.window, text="B:").grid(row=7, column=0)
+        self.lblBThreshold = Label(self.window, text="0", textvariable=self.thresholdB).grid(row=7, column=1)
+
+        # self.txtGlobalThreshold = Entry(self.window, textvariable=self.global_thresholding)
+        # self.txtGlobalThreshold.grid(row=0, column=2)
+
+        # ----------------------- Otsu Thresholding ------------------
+    def otsu_thresholding_wrapper(self):
+        threshold = otsu_thresholding_algorithm()
+        self.thresholdR.set(threshold[0])
+        self.thresholdG.set(threshold[1])
+        self.thresholdB.set(threshold[2])
+        print(threshold)
+
+    def global_thresholding(self):
+        threshold = global_thresholding_algorithm()
+        self.thresholdR.set(threshold[0])
+        self.thresholdB.set(threshold[1])
+        self.thresholdG.set(threshold[2])
+        print(threshold)
+
+
+def global_thresholding_algorithm():
+    matrix = editableImage.data
+    width = editableImage.width
+    height = editableImage.height
+
+    r = global_thresholding_by_range(matrix, width, height, 0)
+    g = global_thresholding_by_range(matrix, width, height, 1)
+    b = global_thresholding_by_range(matrix, width, height, 2)
+    threshold = [r, g, b]
+    return threshold
+
+
+def global_thresholding_by_range(matrix, width, height, color_range):
+    min_value = get_min_value_matrix(matrix, width, height, color_range)
+    max_value = get_max_value_matrix(matrix, width, height, color_range)
+    if max_value == min_value or max_value - min_value == 1:
+        return None
+    t = ATIRandom.rand_int_between_range(min_value + 1, max_value - 1)
+    new_t = global_thresholding_by_range_with_t(matrix, width, height, color_range, t)
+
+    while abs(new_t - t) >= 1:
+        t = new_t
+        new_t = global_thresholding_by_range_with_t(matrix, width, height, color_range, t)
+    return int(new_t)
+
+
+def global_thresholding_by_range_with_t(matrix, width, height, color_range, t):
+    m1 = get_global_thresholding_m1(matrix, width, height, color_range, t)
+    m2 = get_global_thresholding_m2(matrix, width, height, color_range, t)
+    return (m1 + m2) / 2
+
+
+def get_global_thresholding_m1(matrix, width, height, color_range, t):
+    n1 = 0
+    amount = 0
+    for y in range(height):
+        for x in range(width):
+            if matrix[y][x][color_range] <= t:
+                amount = amount + matrix[y][x][color_range]
+                n1 = n1 + 1
+    return int(amount) / int(n1)
+
+
+def get_global_thresholding_m2(matrix, width, height, color_range, t):
+    n2 = 0
+    amount = 0
+    for y in range(height):
+        for x in range(width):
+            if matrix[y][x][color_range] > t:
+                amount = amount + matrix[y][x][color_range]
+                n2 = n2 + 1
+    return int(amount) / int(n2)
+
+
+def get_min_value_matrix(matrix, width, height, color_range):
+    min_value = matrix[0][0][color_range]
+    for y in range(height):
+        for x in range(width):
+            if (matrix[y][x][color_range] < min_value):
+                min_value = matrix[y][x][color_range]
+    return min_value
+
+
+def get_max_value_matrix(matrix, width, height, color_range):
+    max_value = matrix[0][0][color_range]
+    for y in range(height):
+        for x in range(width):
+            if (matrix[y][x][color_range] > max_value):
+                max_value = matrix[y][x][color_range]
+    return max_value
+
+
+def otsu_thresholding_algorithm():
+    matrix = editableImage.data
+    width = editableImage.width
+    height = editableImage.height
+
+    r = otsu_thresholding_by_range(matrix, width, height, 0)
+    g = otsu_thresholding_by_range(matrix, width, height, 1)
+    b = otsu_thresholding_by_range(matrix, width, height, 2)
+    threshold = [r, g, b]
+    return threshold
+
+
+def otsu_thresholding_by_range(matrix, width, height, color_range):
+    histogram = make_histogram_by_range(matrix, width, height, color_range)
+    acumulative_sums = count_acumulative_sums(histogram)
+    acumulative_media = calculate_acumulative_media(histogram)
+    media_global = acumulative_media[255]
+    varianza = calculate_varianza(acumulative_sums, acumulative_media, media_global)
+    indexes = get_max_value_index(varianza)
+    if len(indexes) == 1:
+        return indexes[0]
+    count = 0
+    for y in range(len(indexes)):
+        count = count + indexes[y]
+    return int(count/len(indexes))
+
+
+def get_max_value_index(array):
+    max_value = array[0]
+    index_array = []
+    for p in range(256):
+        if array[p] > max_value:
+            max_value = array[p]
+            index_array = []
+            index_array.append(p)
+        elif array[p] == max_value:
+            index_array.append(p)
+    return index_array
+
+def make_histogram_by_range(matrix, width, height, color_range):
+    histogram = [0] * 256
+    count = 0
+    for y in range(height):
+        for x in range(width):
+            value = matrix[y][x][color_range]
+            count = count + 1
+            histogram[value] = histogram[value] + 1
+    for t in range(256):
+        histogram[t] = histogram[t] / count
+    return histogram
+
+
+def count_acumulative_sums(histogram):
+    acumulative_sums = [0] * 256
+    for p in range(256):
+        acumulative_sums[p] = histogram[p]
+        if p > 0:
+            acumulative_sums[p] = acumulative_sums[p] + acumulative_sums[p - 1]
+    return acumulative_sums
+
+
+def calculate_acumulative_media(histogram):
+    acumulative_media = [0] * 256
+    for p in range(256):
+        acumulative_media[p] = p * histogram[p]
+        if p > 0:
+            acumulative_media[p] = acumulative_media[p] + acumulative_media[p - 1]
+    return acumulative_media
+
+
+def calculate_varianza(acumulative_sums, acumulative_media, global_media):
+    varianza = [0] * 256
+    for p in range(256):
+        if acumulative_sums[p] == 0 or acumulative_sums[p] == 1:
+            varianza[p] = 0
+        else:
+            varianza[p] = (global_media * acumulative_sums[p] - acumulative_media[p])**2 / (acumulative_sums[p] * (1 - acumulative_sums[p]))
+    return varianza
 #
 #   Getters
 #
