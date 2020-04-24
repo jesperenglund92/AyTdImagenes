@@ -65,6 +65,7 @@ class Window(Frame):
         self.effect_menu = Menu(self.menu)
         self.effect_menu.add_command(label="Borders Detection", command=borders_window)
         self.effect_menu.add_command(label="Diffusion", command=diffusion_window)
+        self.effect_menu.add_command(label="Bilateral Filter", command=bilateral_window)
         self.menu.add_cascade(label="Effects", menu=self.effect_menu)
 
         Label(master, text="x: ").grid(row=0, column=0)
@@ -224,7 +225,7 @@ def redraw_img(filtered_image, col):
     img = np.array(editableImage.data)
     if not col:
         filtered_image = np.repeat(filtered_image, 3)
-    filtered_image = filtered_image.reshape(img.shape)
+        filtered_image = filtered_image.reshape(img.shape)
     editableImage.data = filtered_image
     draw_ati_image(editableImage)
 
@@ -614,6 +615,47 @@ class RawWindow:
 
         draw_images()
         file.close()
+
+def open_raw_image_testing():
+    global editableImage
+    global originalImage
+
+    """width = 290
+    height = 207
+    file = open("testing-images/BARCO.RAW", "rb")"""
+
+    width = 256
+    height = 256
+    file = open("testing-images/LENA.RAW", "rb")
+
+    image = []
+
+    for y in range(height):
+        tmp_list = []
+        for x in range(width):
+            image_color = int.from_bytes(file.read(1), byteorder="big")
+            tmp_list.append([image_color, image_color, image_color])
+        image.append(tmp_list)
+
+    app.enable_image_menu()
+    app.master.focus_set()
+
+    editableImage.height = height
+    editableImage.width = width
+    editableImage.data = image
+    editableImage.max_gray_level = 255
+    editableImage.set_restore_image()
+    editableImage.values_set = True
+    editableImage.image_type = ".raw"
+
+    originalImage = editableImage.get_copy()
+    originalImage.editable = False
+    originalImage.id = 1
+    originalImage.values_set = True
+    originalImage.image_type = ".raw"
+
+    draw_images()
+    file.close()
 
 
 def load_pgm(file):
@@ -1945,6 +1987,87 @@ def leclerc_function(value, sigma):
     ans = np.exp((-1) * (value ** 2) / (sigma ** 2))
     return ans
 
+#
+#   Bilateral Filter
+#
+
+
+def bilateral_window():
+    BilateralFilter()
+
+
+class BilateralFilter:
+    def __init__(self):
+        self.window = Tk()
+        self.window.focus_set()
+        self.window.title("Bilateral Filter")
+        self.window.geometry("520x360")
+
+        Label(self.window, text="Mask size:").grid(row=0, column=0)
+        self.size = StringVar()
+        self.txtSize = Entry(self.window, textvariable=self.size)
+        self.txtSize.grid(row=0, column=1)
+        Label(self.window, text="Sigma (color/intensity):").grid(row=1, column=0)
+        self.sigmaCol = StringVar()
+        self.txtSigmaCol = Entry(self.window, textvariable=self.sigmaCol)
+        self.txtSigmaCol.grid(row=1, column=1)
+        Label(self.window, text="Sigma (spatial):").grid(row=2, column=0)
+        self.sigmaSpa = StringVar()
+        self.txtSigmaSpa = Entry(self.window, textvariable=self.sigmaSpa)
+        self.txtSigmaSpa.grid(row=2, column=1)
+
+        self.btnBilateralFilter = Button(self.window, text="Apply filter",
+                                            command=self.bilateral_filter_wrapper)
+        self.btnBilateralFilter.grid(row=3, column=0)
+
+    def bilateral_filter_wrapper(self):
+        size = int(self.txtSize.get())
+        sigma_col = int(self.txtSigmaCol.get())
+        sigma_space = int(self.txtSigmaSpa.get())
+        bilateral_func(size, sigma_col, sigma_space)
+
+
+def bilateral_func(size, sigma_col, sigma_space):
+    if editableImage.image_type == "ppm":
+        colors = 3
+    else:
+        colors = 1
+    pad = int((size - 1) / 2)
+    image = np.array(editableImage.data)
+    n_size = (size - 1) / 2
+    x, y = np.mgrid[-n_size:n_size + 1, -n_size:n_size + 1]
+    k = 1 / (2 * sigma_space ** 2)
+    gs = np.exp(-(x ** 2 + y ** 2) * k)
+    fin_img = None
+    for i in range(colors):
+        img = image[:, :, i]
+        convolved_img = convolve_bilateral(img, gs, pad, size, sigma_col)
+        if i < 1:
+            fin_img = convolved_img
+        else:
+            fin_img = np.dstack((fin_img, convolved_img))
+    if colors == 1:
+        redraw_img(fin_img, False)
+    else:
+        redraw_img(fin_img, True)
+
+
+def convolve_bilateral(img, gs, pad, size, sigma_col):
+    output = np.zeros_like(img)
+    image_padded = np.zeros((img.shape[0] + pad * 2, img.shape[1] + pad * 2))
+    image_padded[pad:-pad, pad:-pad] = img
+    for x in range(img.shape[1]):
+        for y in range(img.shape[0]):
+            current_matrix = image_padded[y:y + size, x:x + size]
+            current_pixel = image_padded[y+pad][x+pad]
+            k = 1 / (2 * sigma_col ** 2)
+            current_matrix_diff = abs(current_matrix - current_pixel)
+            fr = np.exp(-((current_matrix_diff ** 2) * k))
+            w = gs * fr
+            norm_var = w.sum()
+            output[y, x] = ((w * image_padded[y:y + size, x:x + size]).sum()/norm_var)
+    return output
+
 
 #
 #   Getters
@@ -2167,6 +2290,8 @@ def main():
     load_ppm(file)
     draw_images()
     file.close()"""
+
+    open_raw_image_testing()
 
     done = False
     while not done:

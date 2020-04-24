@@ -34,7 +34,7 @@ rgb = np.dstack((r, g))
 
 rgb = np.dstack((rgb, b))
 
-print(rgb)
+print((r * g)/g)
 
 def rot(array):
     new_array = array
@@ -49,6 +49,5 @@ def check_distance_to_edge(array, pos):
 
 x, y = np.mgrid[-7:7 + 1, -7:7 + 1]
 
-print(x)
 
 rot(r)
