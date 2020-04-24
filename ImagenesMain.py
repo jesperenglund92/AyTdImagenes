@@ -1989,28 +1989,45 @@ class ThresholdingAlgoritmWindow:
 
         # ----------------------- Otsu Thresholding ------------------
     def otsu_thresholding_wrapper(self):
-        threshold = otsu_thresholding_algorithm()
+        matrix = editableImage.data
+        width = editableImage.width
+        height = editableImage.height
+
+        threshold = otsu_thresholding_algorithm(matrix, width, height)
         self.thresholdR.set(threshold[0])
         self.thresholdG.set(threshold[1])
         self.thresholdB.set(threshold[2])
         print(threshold)
+        new_matrix = apply_thresholding_by_range(matrix, width, height, threshold)
+        editableImage.data = new_matrix
+        draw_ati_image(editableImage)
+
 
     def global_thresholding(self):
-        threshold = global_thresholding_algorithm()
+        matrix = editableImage.data
+        width = editableImage.width
+        height = editableImage.height
+
+        threshold = global_thresholding_algorithm(matrix, width, height)
         self.thresholdR.set(threshold[0])
         self.thresholdB.set(threshold[1])
         self.thresholdG.set(threshold[2])
         print(threshold)
 
+        new_matrix = apply_thresholding_by_range(matrix, width, height, threshold)
+        editableImage.data = new_matrix
+        draw_ati_image(editableImage)
 
-def global_thresholding_algorithm():
-    matrix = editableImage.data
-    width = editableImage.width
-    height = editableImage.height
 
+
+def global_thresholding_algorithm(matrix, width, height):
     r = global_thresholding_by_range(matrix, width, height, 0)
-    g = global_thresholding_by_range(matrix, width, height, 1)
-    b = global_thresholding_by_range(matrix, width, height, 2)
+    if editableImage.image_type == "ppm":
+        g = global_thresholding_by_range(matrix, width, height, 1)
+        b = global_thresholding_by_range(matrix, width, height, 2)
+    else:
+        g = r
+        b = r
     threshold = [r, g, b]
     return threshold
 
@@ -2075,14 +2092,14 @@ def get_max_value_matrix(matrix, width, height, color_range):
     return max_value
 
 
-def otsu_thresholding_algorithm():
-    matrix = editableImage.data
-    width = editableImage.width
-    height = editableImage.height
-
+def otsu_thresholding_algorithm(matrix, width, height):
     r = otsu_thresholding_by_range(matrix, width, height, 0)
-    g = otsu_thresholding_by_range(matrix, width, height, 1)
-    b = otsu_thresholding_by_range(matrix, width, height, 2)
+    if editableImage.image_type == "ppm":
+        g = otsu_thresholding_by_range(matrix, width, height, 1)
+        b = otsu_thresholding_by_range(matrix, width, height, 2)
+    else:
+        g = r
+        b = r
     threshold = [r, g, b]
     return threshold
 
@@ -2113,6 +2130,7 @@ def get_max_value_index(array):
         elif array[p] == max_value:
             index_array.append(p)
     return index_array
+
 
 def make_histogram_by_range(matrix, width, height, color_range):
     histogram = [0] * 256
@@ -2153,6 +2171,23 @@ def calculate_varianza(acumulative_sums, acumulative_media, global_media):
         else:
             varianza[p] = (global_media * acumulative_sums[p] - acumulative_media[p])**2 / (acumulative_sums[p] * (1 - acumulative_sums[p]))
     return varianza
+
+
+def apply_thresholding_by_range(matrix, width, height, thresholding):
+    new_matrix = []
+    for y in range(height):
+        row = []
+        for x in range(width):
+            pixel_color = []
+            for i in range(3):
+                if matrix[y][x][i] > thresholding[i]:
+                    pixel_color.append(255)
+                else:
+                    pixel_color.append(0)
+            row.append(pixel_color)
+        new_matrix.append(row)
+    return new_matrix
+
 #
 #   Getters
 #
