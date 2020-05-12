@@ -498,7 +498,6 @@ class NoiseWindow:
         if gamma == '':
             raise Exception("Gamma not set")
         image.noise_exponential(percent, gamma)
-        print(image.data[0])
         draw_ati_image(image)
         self.delete_window()
 
@@ -616,6 +615,7 @@ class RawWindow:
 
         draw_images()
         file.close()
+
 
 def open_raw_image_testing():
     global editableImage
@@ -1542,7 +1542,7 @@ class BordersWindow:
 def border_single_direction(operator, side="horizontal"):
     if operator == "prewitt":
         mask = np.array([[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]])
-    elif operator == "sobel":
+    else:
         mask = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
     if side == "vertical":
         mask = rotate_mask(mask, 90)
@@ -1672,12 +1672,12 @@ def rotate_matrix(mat):
     if not len(mat):
         return
 
-        """ 
+    """ 
             top : starting row index 
             bottom : ending row index 
             left : starting column index 
             right : ending column index 
-        """
+    """
 
     top = 0
     bottom = len(mat) - 1
@@ -1773,7 +1773,7 @@ def zero_cross(matrix, width, height, side):
 def apply_threshold(num1, num2, threshold):
     a = abs(num1)
     b = abs(num2)
-    if (a + b) >= threshold:
+    if (a + b) > threshold:
         return 255
     return 0
 
@@ -1841,7 +1841,7 @@ def edge_enhance(level, operator, angle=0, enhance=False):
     elif operator == "other":
         h_x = np.array([[1, 1, -1], [1, -2, -1], [1, 1, -1]])
         h_y = np.array([[1, 1, 1], [1, -2, 1], [-1, -1, -1]])
-    elif operator == "laplace":
+    else:
         h_x = np.array([[0, -1, 0], [-1, 4, -1], [0, -1, 0]])
         h_y = np.array([[0, -1, 0], [-1, 4, -1], [0, -1, 0]])
 
@@ -1856,7 +1856,8 @@ def edge_enhance(level, operator, angle=0, enhance=False):
         g = np.sqrt(g_x ** 2 + g_y ** 2)
         if enhance:
             new_img = img + g * level
-        """new_img = img + g * level"""
+        else:
+            new_img = g
         new_img = normalize(new_img)
         if i < 1:
             fin_img = new_img
@@ -1974,7 +1975,6 @@ def direction_difference(matrix, width, height, range_color, x, y, difx, dify):
     new_x = x + difx
     new_y = y + dify
 
-    value = 0
     if new_x < 0 or new_x >= width:
         value = 0
     elif new_y < 0 or new_y >= height:
@@ -2018,7 +2018,7 @@ class BilateralFilter:
         self.txtSigmaSpa.grid(row=2, column=1)
 
         self.btnBilateralFilter = Button(self.window, text="Apply filter",
-                                            command=self.bilateral_filter_wrapper)
+                                         command=self.bilateral_filter_wrapper)
         self.btnBilateralFilter.grid(row=3, column=0)
 
     def bilateral_filter_wrapper(self):
@@ -2125,7 +2125,6 @@ class ThresholdingAlgoritmWindow:
         editableImage.data = new_matrix
         draw_ati_image(editableImage)
 
-
     def global_thresholding(self):
         matrix = editableImage.data
         width = editableImage.width
@@ -2201,7 +2200,7 @@ def get_min_value_matrix(matrix, width, height, color_range):
     min_value = matrix[0][0][color_range]
     for y in range(height):
         for x in range(width):
-            if (matrix[y][x][color_range] < min_value):
+            if matrix[y][x][color_range] < min_value:
                 min_value = matrix[y][x][color_range]
     return min_value
 
@@ -2210,7 +2209,7 @@ def get_max_value_matrix(matrix, width, height, color_range):
     max_value = matrix[0][0][color_range]
     for y in range(height):
         for x in range(width):
-            if (matrix[y][x][color_range] > max_value):
+            if matrix[y][x][color_range] > max_value:
                 max_value = matrix[y][x][color_range]
     return max_value
 
