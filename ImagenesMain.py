@@ -1935,17 +1935,20 @@ def canny_func(size, sigma_col, sigma_space):
         g_x = convolve_func(img, h_x, pad, size)
         g_y = convolve_func(img, h_y, pad, size)
         g = np.sqrt(g_x ** 2 + g_y ** 2)
+
         if i < 1:
-            fin_img_g = g
+            fin_img_g = normalize(g)
             fin_img_g_x = g_x
             fin_img_g_y = g_y
-        """else:
+        else:
             fin_img_g = np.dstack((fin_img_g, g))
             fin_img_g_x = np.dstack((fin_img_g_x, g_x))
-            fin_img_g_y = np.dstack((fin_img_g_y, g_y))"""
-    fin_img_g = reshape_images(fin_img_g, image.shape)
-    fin_img_g_x = reshape_images(fin_img_g_x, image.shape)
-    fin_img_g_y = reshape_images(fin_img_g_y, image.shape)
+            fin_img_g_y = np.dstack((fin_img_g_y, g_y))
+
+    shape = image.shape
+    fin_img_g = reshape_images(fin_img_g, shape)
+    fin_img_g_x = reshape_images(fin_img_g_x, shape)
+    fin_img_g_y = reshape_images(fin_img_g_y, shape)
 
     # Step 3: Calculate angles
     angle_matrix = calculate_canny_angles(fin_img_g_y, fin_img_g_x, width, height)
@@ -1959,60 +1962,68 @@ def canny_func(size, sigma_col, sigma_space):
     draw_ati_image(editableImage)
 
 
-def calculate_variance(data, width, height):
+def calculate_variance(data, width, height, color_range):
     pixel_amount = 0
     pixel_count = 0
     for y1 in range(height):
         for x1 in range(width):
-            pixel_amount = pixel_amount + data[y1][x1]
+            pixel_amount = pixel_amount + data[y1][x1][color_range]
             pixel_count = pixel_count + 1
     image_avg = int(round(pixel_amount / pixel_count))
     variance_sum = 0
     for y2 in range(height):
         for x2 in range(width):
-            variance_sum = variance_sum + math.pow(data[y2][x2] - image_avg, 2)
+            variance_sum = variance_sum + math.pow(data[y2][x2][color_range] - image_avg, 2)
     variance = math.sqrt(variance_sum / (pixel_count - 1))
     return variance
 
 
 def apply_hysteresis(data, width, height):
-    threshold = 101
-    variance = calculate_variance(data, width, height)
+    threshold = int(round(otsu_thresholding_by_range(data, width, height, 0)))
+    print("Threshold Calculated = " + threshold.__str__())
+    variance = int(round(calculate_variance(data, width, height, 0)))
+    print("Variance = " + variance.__str__())
     t1 = threshold - variance
     t2 = threshold + variance
-    new_data = []
+
+    new_data_1 = []
+
     for y1 in range(height):
-        row = []
+        row_1 = []
         for x1 in range(width):
-            value = data[y1][x1]
+            value = data[y1][x1][0]
             if value > t2:
                 new_value = 255
             elif value < t1:
                 new_value = 0
             else:
                 new_value = value
-            row.append(new_value)
-        new_data.append(row)
+            row_1.append([new_value, new_value, new_value])
+        new_data_1.append(row_1)
 
+    new_data_2 = []
     for y2 in range(height):
+        row_2 = []
         for x2 in range(width):
-            value = new_data[y2][x2]
+            value = new_data_1[y2][x2][0]
             if t1 <= value <= t2:
-                new_value = is_connected_to_border_pixel(new_data, width, height, x2, y2)
-            new_data[y2][x2] = new_value
-    ans_data = []
-    for y3 in range(height):
-        ans_row = []
-        for x3 in range(width):
-            value = new_data[y3][x3]
-            ans_row.append([value, value, value])
-        ans_data.append(ans_row)
-    return ans_data
+                value = is_connected_to_border_pixel(new_data_1, width, height, x2, y2)
+            if value < 0 or value > 255:
+                print(value)
+            row_2.append([value, value, value])
+        new_data_2.append(row_2)
+    return new_data_2
 
 
 def is_connected_to_border_pixel(data, width, height, x, y):
-    # TODO: Implement is_connected_to_border_pixel
-    return 255
+    for y1 in range (3):
+        for x1 in range(3):
+            x2 = x + 1 - x1
+            y2 = y + 1 - y1
+            if not (x2 < 0 or x2 >= width or y2 < 0 or y2 >= height):
+                if data[y2][x2][0] == 255:
+                    return 255
+    return 0
 
 
 def to_grey_scale(data, width, height):
@@ -2042,7 +2053,7 @@ def remove_not_max_pixels(data, width, height, angle_matrix):
             border_value = data[y][x][0]
             if border_value > 0:
                 border_value = calculate_remove_not_max_pixel(data, width, height, x, y, angle_matrix)
-            row.append(border_value)
+            row.append([border_value, border_value, border_value])
         border_matrix.append(row)
     return border_matrix
 
@@ -2065,13 +2076,13 @@ def calculate_remove_not_max_pixel(data, width, height, x, y, angle):
         y1 = y1 + 1
         y2 = y2 - 1
     if x1 < 0 or x1 >= width:
-        val_1 = 255
+        val_1 = 0
     if y1 < 0 or y1 >= height:
-        val_1 = 255
+        val_1 = 0
     if x2 < 0 or x2 >= width:
-        val_2 = 255
+        val_2 = 0
     if y2 < 0 or x2 >= height:
-        val_2 = 255
+        val_2 = 0
     if val_1 == 0:
         val_1 = data[y1][x1][0]
     if val_2 == 0:
@@ -2087,6 +2098,8 @@ def map_canny_angle(angle):
         angle = angle - 360
     while angle < 0:
         angle = angle + 360
+    if angle > 180:
+        print(angle.__str__())
     if 0 <= angle < 22.5 or 157.5 <= angle < 202.5 or 337.5 <= angle <= 360:
         return 0
     if 22.5 <= angle < 67.5 or 202.5 <= angle < 247.5:
@@ -2111,8 +2124,6 @@ def calculate_canny_angles(img_g_x, img_g_y, width, height):
                 angle = map_canny_angle(angle)
             row.append(angle)
         angle_matrix.append(row)
-    return angle_matrix
-
     return angle_matrix
 
 
