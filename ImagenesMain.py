@@ -67,6 +67,7 @@ class Window(Frame):
         self.effect_menu.add_command(label="Diffusion", command=diffusion_window)
         self.effect_menu.add_command(label="Thresholding Algoritms", command=thresholding_algoritm_window)
         self.effect_menu.add_command(label="Bilateral Filter", command=bilateral_window)
+        self.effect_menu.add_command(label="Canny Algoritm", command=canny_window)
         self.menu.add_cascade(label="Effects", menu=self.effect_menu)
 
         Label(master, text="x: ").grid(row=0, column=0)
@@ -616,6 +617,7 @@ class RawWindow:
 
         draw_images()
         file.close()
+
 
 def open_raw_image_testing():
     global editableImage
@@ -1854,6 +1856,7 @@ def edge_enhance(level, operator, angle=0, enhance=False):
         g_x = convolve_func(img, h_x, pad, size)
         g_y = convolve_func(img, h_y, pad, size)
         g = np.sqrt(g_x ** 2 + g_y ** 2)
+        new_img = g
         if enhance:
             new_img = img + g * level
         """new_img = img + g * level"""
@@ -1866,6 +1869,257 @@ def edge_enhance(level, operator, angle=0, enhance=False):
         redraw_img(fin_img, False)
     else:
         redraw_img(fin_img, True)
+
+
+# -------------------------- Canny --------------------------
+def canny_window():
+    CannyBorderDetection()
+
+
+class CannyBorderDetection:
+    def __init__(self):
+        self.window = Tk()
+        self.window.focus_set()
+        self.window.title("Canny Border Detection")
+        self.window.geometry("260x140")
+
+        Label(self.window, text="Mask size:").grid(row=0, column=0)
+        self.size = StringVar()
+        self.txtSize = Entry(self.window, textvariable=self.size)
+        self.txtSize.grid(row=0, column=1)
+        Label(self.window, text="Sigma (color/intensity):").grid(row=1, column=0)
+        self.sigmaCol = StringVar()
+        self.txtSigmaCol = Entry(self.window, textvariable=self.sigmaCol)
+        self.txtSigmaCol.grid(row=1, column=1)
+        Label(self.window, text="Sigma (spatial):").grid(row=2, column=0)
+        self.sigmaSpa = StringVar()
+        self.txtSigmaSpa = Entry(self.window, textvariable=self.sigmaSpa)
+        self.txtSigmaSpa.grid(row=2, column=1)
+
+        self.btnBilateralFilter = Button(self.window, text="Apply filter",
+                                         command=self.canny_filter_wrapper)
+        self.btnBilateralFilter.grid(row=3, column=0)
+
+    def canny_filter_wrapper(self):
+        size = int(self.txtSize.get())
+        sigma_col = int(self.txtSigmaCol.get())
+        sigma_space = int(self.txtSigmaSpa.get())
+        canny_func(size, sigma_col, sigma_space)
+
+
+def canny_func(size, sigma_col, sigma_space):
+    image_data = editableImage.data
+    width = editableImage.width
+    height = editableImage.height
+
+    if editableImage.image_type == "ppm":
+        colors = 3
+        image_data = to_grey_scale(image_data, width, height)
+    else:
+        colors = 1
+
+    # Step 1: Apply bilateral filter
+    bilateral_func(size, sigma_col, sigma_space, image_data, 3)
+
+    # Step 2: Calculate gradient
+    fin_img = None
+    level = 1
+    image = np.array(image_data)
+    # Sobel Matrix
+    h_x = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
+    h_y = np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
+    size = 3
+    pad = int((size - 1) / 2)
+    for i in range(1):
+        img = image[:, :, i]
+        g_x = convolve_func(img, h_x, pad, size)
+        g_y = convolve_func(img, h_y, pad, size)
+        g = np.sqrt(g_x ** 2 + g_y ** 2)
+        if i < 1:
+            fin_img_g = g
+            fin_img_g_x = g_x
+            fin_img_g_y = g_y
+        """else:
+            fin_img_g = np.dstack((fin_img_g, g))
+            fin_img_g_x = np.dstack((fin_img_g_x, g_x))
+            fin_img_g_y = np.dstack((fin_img_g_y, g_y))"""
+    fin_img_g = reshape_images(fin_img_g, image.shape)
+    fin_img_g_x = reshape_images(fin_img_g_x, image.shape)
+    fin_img_g_y = reshape_images(fin_img_g_y, image.shape)
+
+    # Step 3: Calculate angles
+    angle_matrix = calculate_canny_angles(fin_img_g_y, fin_img_g_x, width, height)
+
+    # Step 4: Remove Not Max
+    border_image = remove_not_max_pixels(fin_img_g, width, height, angle_matrix)
+
+    # Step 5: Apply hysteresis
+    final_data = apply_hysteresis(border_image, width, height)
+    editableImage.data = final_data
+    draw_ati_image(editableImage)
+
+
+def calculate_variance(data, width, height):
+    pixel_amount = 0
+    pixel_count = 0
+    for y1 in range(height):
+        for x1 in range(width):
+            pixel_amount = pixel_amount + data[y1][x1]
+            pixel_count = pixel_count + 1
+    image_avg = int(round(pixel_amount / pixel_count))
+    variance_sum = 0
+    for y2 in range(height):
+        for x2 in range(width):
+            variance_sum = variance_sum + math.pow(data[y2][x2] - image_avg, 2)
+    variance = math.sqrt(variance_sum / (pixel_count - 1))
+    return variance
+
+
+def apply_hysteresis(data, width, height):
+    threshold = 101
+    variance = calculate_variance(data, width, height)
+    t1 = threshold - variance
+    t2 = threshold + variance
+    new_data = []
+    for y1 in range(height):
+        row = []
+        for x1 in range(width):
+            value = data[y1][x1]
+            if value > t2:
+                new_value = 255
+            elif value < t1:
+                new_value = 0
+            else:
+                new_value = value
+            row.append(new_value)
+        new_data.append(row)
+
+    for y2 in range(height):
+        for x2 in range(width):
+            value = new_data[y2][x2]
+            if t1 <= value <= t2:
+                new_value = is_connected_to_border_pixel(new_data, width, height, x2, y2)
+            new_data[y2][x2] = new_value
+    ans_data = []
+    for y3 in range(height):
+        ans_row = []
+        for x3 in range(width):
+            value = new_data[y3][x3]
+            ans_row.append([value, value, value])
+        ans_data.append(ans_row)
+    return ans_data
+
+
+def is_connected_to_border_pixel(data, width, height, x, y):
+    # TODO: Implement is_connected_to_border_pixel
+    return 255
+
+
+def to_grey_scale(data, width, height):
+    new_data = []
+    for y in range(height):
+        row = []
+        for x in range(width):
+            r = data[y][x][0]
+            g = data[y][x][1]
+            b = data[y][x][2]
+            value = int(round((r + g + b) / 3))
+            if value > 255:
+                value = 255
+            if value < 0:
+                value = 0
+            pixel_color = [value, value, value]
+            row.append(pixel_color)
+        new_data.append(row)
+    return new_data
+
+
+def remove_not_max_pixels(data, width, height, angle_matrix):
+    border_matrix = []
+    for y in range(height):
+        row = []
+        for x in range(width):
+            border_value = data[y][x][0]
+            if border_value > 0:
+                border_value = calculate_remove_not_max_pixel(data, width, height, x, y, angle_matrix)
+            row.append(border_value)
+        border_matrix.append(row)
+    return border_matrix
+
+
+def calculate_remove_not_max_pixel(data, width, height, x, y, angle):
+    my_val = data[y][x][0]
+    x1 = x
+    y1 = y
+    x2 = x
+    y2 = y
+    val_1 = 0
+    val_2 = 0
+    if angle == 0 or angle == 135 or angle == 45:
+        x1 = x1 - 1
+        x2 = x2 + 1
+    if angle == 90 or angle == 135:
+        y1 = y1 - 1
+        y2 = y2 + 1
+    if angle == 45:
+        y1 = y1 + 1
+        y2 = y2 - 1
+    if x1 < 0 or x1 >= width:
+        val_1 = 255
+    if y1 < 0 or y1 >= height:
+        val_1 = 255
+    if x2 < 0 or x2 >= width:
+        val_2 = 255
+    if y2 < 0 or x2 >= height:
+        val_2 = 255
+    if val_1 == 0:
+        val_1 = data[y1][x1][0]
+    if val_2 == 0:
+        val_1 = data[y2][x2][0]
+    max_val = max(val_1, val_2)
+    if my_val != max(my_val, max_val):
+        return 0
+    return my_val
+
+
+def map_canny_angle(angle):
+    while angle > 360:
+        angle = angle - 360
+    while angle < 0:
+        angle = angle + 360
+    if 0 <= angle < 22.5 or 157.5 <= angle < 202.5 or 337.5 <= angle <= 360:
+        return 0
+    if 22.5 <= angle < 67.5 or 202.5 <= angle < 247.5:
+        return 45
+    if 67.5 <= angle < 112.5 or 247.5 <= angle < 292.5:
+        return 90
+    if 112.5 <= angle < 157.5 or 292.5 <= angle < 337.5:
+        return 135
+    return angle
+
+
+def calculate_canny_angles(img_g_x, img_g_y, width, height):
+    angle_matrix = []
+    for y in range(height):
+        row = []
+        for x in range(width):
+            if img_g_x[y][x][0] == 0:
+                angle = 90
+            else:
+                angle = math.atan2(img_g_y[y][x][0], img_g_x[y][x][0])
+                angle = math.degrees(angle)
+                angle = map_canny_angle(angle)
+            row.append(angle)
+        angle_matrix.append(row)
+    return angle_matrix
+
+    return angle_matrix
+
+
+def reshape_images(fin_img, shape):
+    fin_img = np.repeat(fin_img, 3)
+    fin_img = fin_img.reshape(shape)
+    return fin_img
 
 
 #
@@ -1988,6 +2242,7 @@ def leclerc_function(value, sigma):
     ans = np.exp((-1) * (value ** 2) / (sigma ** 2))
     return ans
 
+
 #
 #   Bilateral Filter
 #
@@ -2018,23 +2273,25 @@ class BilateralFilter:
         self.txtSigmaSpa.grid(row=2, column=1)
 
         self.btnBilateralFilter = Button(self.window, text="Apply filter",
-                                            command=self.bilateral_filter_wrapper)
+                                         command=self.bilateral_filter_wrapper)
         self.btnBilateralFilter.grid(row=3, column=0)
 
     def bilateral_filter_wrapper(self):
         size = int(self.txtSize.get())
         sigma_col = int(self.txtSigmaCol.get())
         sigma_space = int(self.txtSigmaSpa.get())
-        bilateral_func(size, sigma_col, sigma_space)
+        image_data = editableImage.data
+        if editableImage.image_type == "ppm":
+            colors = 3
+        else:
+            colors = 1
+
+        bilateral_func(size, sigma_col, sigma_space, image_data, colors)
 
 
-def bilateral_func(size, sigma_col, sigma_space):
-    if editableImage.image_type == "ppm":
-        colors = 3
-    else:
-        colors = 1
+def bilateral_func(size, sigma_col, sigma_space, image_data, colors):
     pad = int((size - 1) / 2)
-    image = np.array(editableImage.data)
+    image = np.array(image_data)
     n_size = (size - 1) / 2
     x, y = np.mgrid[-n_size:n_size + 1, -n_size:n_size + 1]
     k = 1 / (2 * sigma_space ** 2)
@@ -2060,13 +2317,13 @@ def convolve_bilateral(img, gs, pad, size, sigma_col):
     for x in range(img.shape[1]):
         for y in range(img.shape[0]):
             current_matrix = image_padded[y:y + size, x:x + size]
-            current_pixel = image_padded[y+pad][x+pad]
+            current_pixel = image_padded[y + pad][x + pad]
             k = 1 / (2 * sigma_col ** 2)
             current_matrix_diff = abs(current_matrix - current_pixel)
             fr = np.exp(-((current_matrix_diff ** 2) * k))
             w = gs * fr
             norm_var = w.sum()
-            output[y, x] = ((w * image_padded[y:y + size, x:x + size]).sum()/norm_var)
+            output[y, x] = ((w * image_padded[y:y + size, x:x + size]).sum() / norm_var)
     return output
 
 
@@ -2111,6 +2368,7 @@ class ThresholdingAlgoritmWindow:
         # self.txtGlobalThreshold.grid(row=0, column=2)
 
         # ----------------------- Otsu Thresholding ------------------
+
     def otsu_thresholding_wrapper(self):
         matrix = editableImage.data
         width = editableImage.width
@@ -2124,7 +2382,6 @@ class ThresholdingAlgoritmWindow:
         new_matrix = apply_thresholding_by_range(matrix, width, height, threshold)
         editableImage.data = new_matrix
         draw_ati_image(editableImage)
-
 
     def global_thresholding(self):
         matrix = editableImage.data
@@ -2140,7 +2397,6 @@ class ThresholdingAlgoritmWindow:
         new_matrix = apply_thresholding_by_range(matrix, width, height, threshold)
         editableImage.data = new_matrix
         draw_ati_image(editableImage)
-
 
 
 def global_thresholding_algorithm(matrix, width, height):
@@ -2239,7 +2495,7 @@ def otsu_thresholding_by_range(matrix, width, height, color_range):
     count = 0
     for y in range(len(indexes)):
         count = count + indexes[y]
-    return int(count/len(indexes))
+    return int(count / len(indexes))
 
 
 def get_max_value_index(array):
@@ -2292,7 +2548,8 @@ def calculate_varianza(acumulative_sums, acumulative_media, global_media):
         if acumulative_sums[p] == 0 or acumulative_sums[p] == 1:
             varianza[p] = 0
         else:
-            varianza[p] = (global_media * acumulative_sums[p] - acumulative_media[p])**2 / (acumulative_sums[p] * (1 - acumulative_sums[p]))
+            varianza[p] = (global_media * acumulative_sums[p] - acumulative_media[p]) ** 2 / (
+                    acumulative_sums[p] * (1 - acumulative_sums[p]))
     return varianza
 
 
@@ -2310,6 +2567,7 @@ def apply_thresholding_by_range(matrix, width, height, thresholding):
             row.append(pixel_color)
         new_matrix.append(row)
     return new_matrix
+
 
 #
 #   Getters
@@ -2533,7 +2791,7 @@ def main():
     draw_images()
     file.close()"""
 
-    open_raw_image_testing()
+    """open_raw_image_testing()"""
 
     done = False
     while not done:
