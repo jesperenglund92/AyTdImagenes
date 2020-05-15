@@ -54,6 +54,7 @@ class Window(Frame):
         self.edit_submenu.add_command(label="Border enhancement", command=set_edge_level)
         self.edit_submenu.add_command(label="Border detection (Sobel)", command=lambda: edge_enhance(1, "sobel"))
         self.edit_submenu.add_command(label="Border detection (Prewitt)", command=lambda: edge_enhance(1, "prewitt"))
+        self.edit_submenu.add_command(label="Susan", command=Susan_window)
 
         self.menu.add_cascade(label="Edit", menu=self.edit_menu)
 
@@ -173,6 +174,80 @@ class Window(Frame):
 #
 #   Filters
 #
+
+
+class Susan_window:
+    def __init__(self):
+        window = Tk()
+        window.focus_set()
+        window.title("SUSAN")
+        Label(window, text="threshold: ").grid(row=0, column=0)
+        self.threshold = Entry(window)
+        self.threshold.grid(row=0, column=1)
+        self.is_corners = IntVar(window)
+        Checkbutton(window, text="Corners", variable=self.is_corners).grid(row=1, column=0)
+        self.is_borders = IntVar(window)
+        Checkbutton(window, text="Borders", variable=self.is_borders).grid(row=2, column=0)
+        Button(window, text="Apply", command=self.susan).grid(row=0, column=2)
+
+    def susan(self):
+        if editableImage.image_type == "ppm":
+            colors = 3
+        else:
+            colors = 1
+        mask = np.zeros((7, 7))
+        mask[:, 2:-2] = [1, 1, 1]
+        mask[1:-1, 1:-1] = [1, 1, 1, 1, 1]
+        mask[2:-2, :] = [1, 1, 1, 1, 1, 1, 1]
+        image = np.array(editableImage.data)
+        #fin_img = None
+        fin_img = np.zeros((image.shape[0], image.shape[1]))
+        is_borders = self.is_borders.get()
+        is_corners = self.is_corners.get()
+        for i in range(colors):
+            img = image[:, :, i]
+            corners, borders = convolve_susan(img, mask, 3, int(self.threshold.get()), 0.125, 37)
+            if i < 1:
+                if is_corners == 1:
+                    fin_img += corners
+                if is_borders == 1:
+                    fin_img += borders
+            else:
+                stackimg = np.zeros_like(image)
+                if is_corners == 1:
+                    stackimg += corners
+                if is_borders == 1:
+                    stackimg += borders
+                fin_img = np.dstack((fin_img, stackimg))
+        if colors == 1:
+            redraw_img(fin_img, False)
+        else:
+            redraw_img(fin_img, True)
+
+
+def convolve_susan(img, mask, pad, thresh_one, thresh_two, N):
+    corners = np.zeros_like(img)
+    borders = np.zeros_like(img)
+    image_padded = np.zeros((img.shape[0] + pad * 2, img.shape[1] + pad * 2))
+    image_padded[pad:-pad, pad:-pad] = img
+    for x in range(img.shape[1]):
+        for y in range(img.shape[0]):
+            n = 0
+            r_zero = image_padded[y + pad, x + pad]
+            for i in range(mask.shape[1]):
+                for j in range(mask.shape[0]):
+                    if mask[i][j] == 1:
+                        if abs(image_padded[y + i, x + j] - r_zero) < thresh_one:
+                            n += 1
+            s = 1 - n/N
+            if 0.5 - thresh_two < s < 0.5 + thresh_two:
+                #print(s)
+                borders[y, x] = 255
+            elif 0.75 - thresh_two <= s < 0.75 + thresh_two:
+                #print(s)
+                corners[y, x] = 255
+    return corners, borders
+
 
 def reset_image():
     editableImage.restore_data()
