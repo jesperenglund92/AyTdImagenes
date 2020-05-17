@@ -1204,9 +1204,9 @@ class NewWhiteSquare:
             row = []
             for x in range(width):
                 if abs(x - center[0]) <= radius and abs(y - center[1]) <= radius:
-                    row.append((0, 0, 0))
-                else:
                     row.append((255, 255, 255))
+                else:
+                    row.append((0, 0, 0))
             data.append(row)
 
         image = ATIImage(data=data, width=width, height=height, image_type='.ppm', active=False,
@@ -2064,8 +2064,6 @@ def calculate_remove_not_max_pixel(data, width, height, x, y, angle):
     y1 = y
     x2 = x
     y2 = y
-    val_1 = 0
-    val_2 = 0
     if angle == 0 or angle == 135 or angle == 45:
         x1 = x1 - 1
         x2 = x2 + 1
@@ -2075,18 +2073,15 @@ def calculate_remove_not_max_pixel(data, width, height, x, y, angle):
     if angle == 45:
         y1 = y1 + 1
         y2 = y2 - 1
-    if x1 < 0 or x1 >= width:
-        val_1 = 0
-    if y1 < 0 or y1 >= height:
-        val_1 = 0
-    if x2 < 0 or x2 >= width:
-        val_2 = 0
-    if y2 < 0 or x2 >= height:
-        val_2 = 0
-    if val_1 == 0:
+    if x1 < 0 or x1 >= width or y1 < 0 or y1 >= height:
+        val_1 = 255
+    else:
         val_1 = data[y1][x1][0]
-    if val_2 == 0:
-        val_1 = data[y2][x2][0]
+    if x2 < 0 or x2 >= width or y2 < 0 or x2 >= height:
+        val_2 = 255
+    else:
+        val_2 = data[y2][x2][0]
+
     max_val = max(val_1, val_2)
     if my_val != max(my_val, max_val):
         return 0
