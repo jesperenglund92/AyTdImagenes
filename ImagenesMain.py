@@ -68,6 +68,7 @@ class Window(Frame):
         self.effect_menu.add_command(label="Thresholding Algoritms", command=thresholding_algoritm_window)
         self.effect_menu.add_command(label="Bilateral Filter", command=bilateral_window)
         self.effect_menu.add_command(label="Canny Algoritm", command=canny_window)
+        self.effect_menu.add_command(label="Pixel Exchange", command=pixel_exchange_window)
         self.menu.add_cascade(label="Effects", menu=self.effect_menu)
 
         Label(master, text="x: ").grid(row=0, column=0)
@@ -1134,8 +1135,17 @@ class NewWhiteCircle:
                          active=False, editable=True, top_left=top_left)
         image.max_gray_level = 255
         image.magic_num = 'P6'
+        images.append(image)
         editableImage = image
+        editableImage.set_restore_image()
+        editableImage.id = 0
+        editableImage.values_set = True
+
         originalImage = image.get_copy()
+        originalImage.editable = False
+        originalImage.id = 1
+        originalImage.values_set = True
+
         originalImage.set_top_left((image.top_left[0] + image.width, 20))
         draw_images()
         app.enable_image_menu()
@@ -1212,8 +1222,18 @@ class NewWhiteSquare:
                          editable=True, top_left=top_left)
         image.max_gray_level = 255
         image.magic_num = 'P6'
+        images.append(image)
         editableImage = image
+        editableImage.set_restore_image()
+        editableImage.id = 0
+        editableImage.values_set = True
+
+
         originalImage = image.get_copy()
+        originalImage.editable = False
+        originalImage.id = 1
+        originalImage.values_set = True
+
         originalImage.set_top_left((image.top_left[0] + image.width, 20))
         draw_images()
         app.enable_image_menu()
@@ -2016,7 +2036,7 @@ def apply_hysteresis(data, width, height):
 
 
 def is_connected_to_border_pixel(data, width, height, x, y):
-    for y1 in range (3):
+    for y1 in range(3):
         for x1 in range(3):
             x2 = x + 1 - x1
             y2 = y + 1 - y1
@@ -2575,11 +2595,116 @@ def apply_thresholding_by_range(matrix, width, height, thresholding):
 
 
 #
+#   Active Borders / Pixel Exchange
+#
+
+def pixel_exchange_window():
+    PixelExchangeWindow()
+
+
+def apply_pixel_exchange():
+    global new_selection
+    img_id = -1
+    for i in range(len(images)):
+        image = get_image_by_id(i)
+        if image.collidepoint(new_selection.new_x, new_selection.new_y):
+            img_id = image.id
+
+    if img_id == -1:
+        print("No image selected")
+        return
+    image_selected = get_image_by_id(img_id)
+    l_in, l_out, pixel_avg, pixel_map = get_selection_pixel_exchange_lists(image_selected, new_selection)
+    print(pixel_avg)
+    print("L in len:")
+    print(len(l_in).__str__())
+    print("L out len:")
+    print(len(l_out).__str__())
+
+
+    return
+
+
+def get_selection_pixel_exchange_lists(image_selected, selection_obj):
+    l_in = []
+    l_out = []
+    pixel_avg = [0, 0, 0]
+    pixel_map = []
+    pixel_count = 0
+    top = selection_obj.get_top_left()[1] - image_selected.top_left[1]
+    left = selection_obj.get_top_left()[0] - image_selected.top_left[0]
+
+    if not (0 <= top < top + selection_obj.get_height() - 1 < image_selected.height):
+        print("Top error")
+        return
+    if not (0 <= left < left + selection_obj.get_width() - 1 < image_selected.width):
+        print("Left Error")
+        return
+
+    image_data = image_selected.data
+
+    for y in range(image_selected.height):
+        row = []
+        for x in range(image_selected.width):
+            if left <= x < left + selection_obj.get_width() and top <= y < top + selection_obj.get_height():
+                if x == left or x == left + selection_obj.get_width() - 1:
+                    if y == top or y == top + selection_obj.get_height() - 1:
+                        row.append(3)
+                    else:
+                        row.append(1)
+                        l_out.append([x, y])
+                else:
+                    if y == top or y == top + selection_obj.get_height() - 1:
+                        row.append(1)
+                        l_out.append([x, y])
+                    else:
+                        pixel_count = pixel_count + 1
+                        pixel_avg[0] = pixel_avg[0] + image_data[y][x][0]
+                        pixel_avg[1] = pixel_avg[1] + image_data[y][x][1]
+                        pixel_avg[2] = pixel_avg[2] + image_data[y][x][2]
+                        if y == top + 1 or y == top + selection_obj.get_height() - 2:
+                            row.append(-1)
+                            l_in.append([x, y])
+                        else:
+                            row.append(-3)
+            else:
+                row.append(3)
+        pixel_map.append(row)
+    pixel_avg[0] = round(pixel_avg[0] / pixel_count, 2)
+    pixel_avg[1] = round(pixel_avg[1] / pixel_count, 2)
+    pixel_avg[2] = round(pixel_avg[2] / pixel_count, 2)
+
+    return l_in, l_out, pixel_avg, pixel_map
+
+
+class PixelExchangeWindow:
+    def __init__(self):
+        self.window = Tk()
+        self.window.focus_set()
+        self.window.title("Canny Border Detection")
+        self.window.geometry("260x140")
+
+        Label(self.window, text="Selection info: ").grid(row=0, column=0)
+        self.btnInfo = Button(self.window, text="Info", command=self.get_selection_info)
+        self.btnInfo.grid(row=0, column=1)
+        Label(self.window, text="Pixel exchange").grid(row=1, column=0)
+        self.btnPixelExchange = Button(self.window, text="Apply pixel exchange", command=apply_pixel_exchange)
+        self.btnPixelExchange.grid(row=1, column=1)
+
+    def get_selection_info(self):
+        print("Selection Info")
+        print(new_selection.get_top_left())
+        print(new_selection.get_bottom_right())
+
+
+#
 #   Getters
 #
 
 def get_image_by_id(image_id):
-    if image_id == 0:
+    print("Image id: ")
+    print (image_id)
+    if image_id == 0 or image_id == 2:
         return editableImage
     elif image_id == 1:
         return originalImage
@@ -2600,10 +2725,12 @@ def is_click_in_images(pos):
 
 def update_selection_values(selection):
     image_id = -1
+    print(len(images))
     for i in range(len(images)):
         image = get_image_by_id(i)
         if image.collidepoint(selection.new_x, selection.new_y):
             image_id = image.id
+    print(image_id)
     if image_id != -1:
         image_selected = get_image_by_id(image_id)
         selected_data = image_data_in_selection(image_selected)
@@ -2618,6 +2745,8 @@ def update_selection_values(selection):
                 .get_green_average_display(selected_data)
             app.blue_pixel_average["text"] = image_selected \
                 .get_blue_average_display(selected_data)
+    else:
+        print("No image selected. Image_id = -1")
     return
 
 
