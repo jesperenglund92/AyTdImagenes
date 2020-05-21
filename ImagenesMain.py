@@ -241,10 +241,8 @@ def convolve_susan(img, mask, pad, thresh_one, thresh_two, N):
                             n += 1
             s = 1 - n/N
             if 0.5 - thresh_two < s < 0.5 + thresh_two:
-                #print(s)
                 borders[y, x] = 255
             elif 0.75 - thresh_two <= s < 0.75 + thresh_two:
-                #print(s)
                 corners[y, x] = 255
     return corners, borders
 
