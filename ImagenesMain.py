@@ -1387,6 +1387,16 @@ def draw_images():
     draw_ati_image(originalImage)
 
 
+def draw_pixel_list(pixel_list, pixel_color, top_left):
+    global surface
+    left = top_left[0]
+    top = top_left[1]
+    pygame.display.get_surface()
+    for item in pixel_list:
+        x = item[0] + left
+        y = item[1] + top
+        surface.set_at((x, y), pixel_color)
+
 #
 #   View
 #
@@ -2597,12 +2607,27 @@ def apply_thresholding_by_range(matrix, width, height, thresholding):
 #
 #   Active Borders / Pixel Exchange
 #
+def pixel_exchange_end(iterations, iteration_count, data, l_in, l_out, object_value):
+    if iteration_count >= iterations:
+        return True
 
-def pixel_exchange_window():
-    PixelExchangeWindow()
+    for i in range(len(l_in)):
+        item = l_in[i]
+        pixel = data[item[1]][item[0]]
+        f = pixel_exchange_test_function(object_value, pixel)
+        if f < 0:
+            return False
+
+    for j in range(len(l_out)):
+        item = l_out[j]
+        pixel = data[item[1]][item[0]]
+        f = pixel_exchange_test_function(object_value, pixel)
+        if f > 0:
+            return False
+    return True
 
 
-def apply_pixel_exchange():
+def apply_pixel_exchange(iterations):
     global new_selection
     img_id = -1
     for i in range(len(images)):
@@ -2614,15 +2639,141 @@ def apply_pixel_exchange():
         print("No image selected")
         return
     image_selected = get_image_by_id(img_id)
+    # Step 1:
     l_in, l_out, pixel_avg, pixel_map = get_selection_pixel_exchange_lists(image_selected, new_selection)
+
     print(pixel_avg)
     print("L in len:")
     print(len(l_in).__str__())
     print("L out len:")
     print(len(l_out).__str__())
 
+    data = image_selected.data
+    height = image_selected.height
+    width = image_selected.width
+    iteration_count = 0
+    while not pixel_exchange_end(iterations,iteration_count, data, l_in, l_out, pixel_avg):
+        iteration_count = iteration_count + 1
 
-    return
+        # Step 2
+        temp_l_out = []
+        for i in range(len(l_out)):
+            item = l_out[i]
+            x = item[0]
+            y = item[1]
+            pixel = data[y][x]
+            f = pixel_exchange_test_function(pixel_avg, pixel)
+            if f > 0:
+                temp_l_out.append(i)
+
+        deleted = 0
+        for i_2 in range(len(temp_l_out)):
+            item = l_out.pop(temp_l_out[i_2] - deleted)
+            deleted = deleted + 1
+            l_in.append(item)
+            pixel_map, l_out = replace_l_out_neighbor(item[0], item[1], width, height, pixel_map, l_out)
+
+        # Step 3
+        temp = []
+        for i_3 in range(len(l_in)):
+            x = l_in[i_3][0]
+            y = l_in[i_3][1]
+            if is_inside_object(x, y, width, height, pixel_map):
+                temp.append(i_3)
+        deleted = 0
+        for i_4 in range(len(temp)):
+            item = l_in.pop(temp[i_4] - deleted)
+            pixel_map[item[1]][item[0]] = -3
+            deleted = deleted + 1
+
+        # Step 4
+        temp_l_in = []
+        for i_5 in range(len(l_in)):
+            item = l_in[i_5]
+            x = item[0]
+            y = item[1]
+            pixel = data[y][x]
+            f = pixel_exchange_test_function(pixel_avg, pixel)
+            if f < 0:
+                temp_l_in.append(i)
+
+        deleted = 0
+        for i_6 in range(len(temp_l_in)):
+            item = l_in.pop(temp_l_in[i_6] - deleted)
+            deleted = deleted + 1
+            l_out.append(item)
+            pixel_map, l_int = replace_l_in_neighbor(item[0], item[1], width, height, pixel_map, l_in)
+
+        # Step 5
+        temp = []
+        for i_7 in range(len(l_in)):
+            x = l_in[i_7][0]
+            y = l_in[i_7][1]
+            if is_outside_object(x, y, width, height, pixel_map):
+                temp.append(i_7)
+        deleted = 0
+        for i_8 in range(len(temp)):
+            item = l_in.pop(temp[i_8] - deleted)
+            pixel_map[item[1]][item[0]] = -3
+            deleted = deleted + 1
+
+    return l_in, l_out, pixel_map
+
+
+def is_inside_object(x, y, width, height, pixel_map):
+    return not has_neighbor_with_value(x, y, width, height, pixel_map, 1)
+
+
+def is_outside_object(x, y, width, height, pixel_map):
+    return not has_neighbor_with_value(x, y, width, height, pixel_map, -1)
+
+
+def has_neighbor_with_value(x, y, width, height, pixel_map, value):
+    for i in range(3):
+        for j in range(3):
+            d_x = 1 - j
+            d_y = 1 - i
+            if not (abs(d_x) == abs(d_y)):
+                new_x = x + d_x
+                new_y = y + d_y
+                if 0 <= new_x < width and 0 <= new_y < height:
+                    if pixel_map[new_y][new_x] == value:
+                        return True
+    return False
+
+
+def replace_list_neighbor(x, y, width, height, pixel_map, list_1, sign):
+    for i in range(3):
+        for j in range(3):
+            d_x = 1 - j
+            d_y = 1 - i
+            if not(abs(d_x) == abs(d_y)):
+                new_x = x + d_x
+                new_y = y + d_y
+                if 0 <= new_x < width and 0 <= new_y < height:
+                    if pixel_map[new_y][new_x] == (3 * sign):
+                        list_1.append([new_x, new_y])
+                        pixel_map[new_y][new_x] = (1 * sign)
+    return pixel_map, list_1
+
+
+def replace_l_out_neighbor(x, y, width, height, pixel_map, l_out):
+    return replace_list_neighbor(x, y, width, height, pixel_map, l_out, 1)
+
+
+def replace_l_in_neighbor(x, y, width, height, pixel_map, l_in):
+    return replace_list_neighbor(x, y, width, height, pixel_map, l_in, -1)
+
+
+def pixel_exchange_test_function(object_value, pixel_value):
+    f = 0
+    dif_r = object_value[0] - pixel_value[0]
+    dif_g = object_value[1] - pixel_value[1]
+    dif_b = object_value[2] - pixel_value[2]
+    mod_1 = dif_r + dif_g + dif_b
+    mod_2 = math.sqrt(pow(dif_r, 2) + pow(dif_g, 2)  + pow(dif_b, 2))
+
+    return 1 - mod_2 / 256
 
 
 def get_selection_pixel_exchange_lists(image_selected, selection_obj):
@@ -2662,7 +2813,8 @@ def get_selection_pixel_exchange_lists(image_selected, selection_obj):
                         pixel_avg[0] = pixel_avg[0] + image_data[y][x][0]
                         pixel_avg[1] = pixel_avg[1] + image_data[y][x][1]
                         pixel_avg[2] = pixel_avg[2] + image_data[y][x][2]
-                        if y == top + 1 or y == top + selection_obj.get_height() - 2:
+                        if y == top + 1 or y == top + selection_obj.get_height() - 2 or \
+                            x == left + 1 or x == left + selection_obj.get_width() - 2:
                             row.append(-1)
                             l_in.append([x, y])
                         else:
@@ -2677,25 +2829,62 @@ def get_selection_pixel_exchange_lists(image_selected, selection_obj):
     return l_in, l_out, pixel_avg, pixel_map
 
 
+def pixel_exchange_window():
+    PixelExchangeWindow()
+    return
+
 class PixelExchangeWindow:
     def __init__(self):
         self.window = Tk()
         self.window.focus_set()
-        self.window.title("Canny Border Detection")
+        self.window.title("Pixel Exchange Algoritm")
         self.window.geometry("260x140")
 
-        Label(self.window, text="Selection info: ").grid(row=0, column=0)
+        selection_info = 0
+        iteration_info = 1
+        apply_algoritm = 2
+        Label(self.window, text="Selection info: ").grid(row=selection_info, column=0)
         self.btnInfo = Button(self.window, text="Info", command=self.get_selection_info)
-        self.btnInfo.grid(row=0, column=1)
-        Label(self.window, text="Pixel exchange").grid(row=1, column=0)
-        self.btnPixelExchange = Button(self.window, text="Apply pixel exchange", command=apply_pixel_exchange)
-        self.btnPixelExchange.grid(row=1, column=1)
+        self.btnInfo.grid(row=selection_info, column=1)
+
+        Label(self.window, text="Iteration count: ").grid(row=iteration_info, column=0)
+        self.iteration_count = StringVar()
+        self.txtIterationCount = Entry(self.window, textvariable=self.iteration_count)
+        self.txtIterationCount.grid(row=iteration_info, column=1)
+
+        Label(self.window, text="Pixel exchange").grid(row=apply_algoritm, column=0)
+        self.btnPixelExchange = Button(self.window, text="Apply pixel exchange", command=self.pixel_exchange_wrapper)
+        self.btnPixelExchange.grid(row=apply_algoritm, column=1)
 
     def get_selection_info(self):
         print("Selection Info")
-        print(new_selection.get_top_left())
-        print(new_selection.get_bottom_right())
+        # print(new_selection.get_top_left())
+        # print(new_selection.get_bottom_right())
+        array = [-1, 4, 6, 7, -4, 6]
+        temp_b = []
+        for a in range(len(array)):
+            if array[a] > 0:
+                temp_b.append(a)
+        print(array)
+        print(temp_b)
+        deleted = 0
+        for i in range(len(temp_b)):
+            array.pop(temp_b[i] - deleted)
+            deleted = deleted + 1
+        print(array)
+        print(temp_b)
 
+    def pixel_exchange_wrapper(self):
+        iterations = int(self.txtIterationCount.get())
+        print("Interations : " + iterations.__str__())
+        l_in, l_out, pixel_map = apply_pixel_exchange(iterations)
+        draw_ati_image(editableImage)
+        red = [255, 0, 0]
+        blue = [0, 0, 255]
+        draw_pixel_list(l_in, red, editableImage.top_left)
+        draw_pixel_list(l_out, blue, editableImage.top_left)
+
+        return
 
 #
 #   Getters
