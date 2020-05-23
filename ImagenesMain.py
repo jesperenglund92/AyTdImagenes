@@ -2607,10 +2607,11 @@ def apply_thresholding_by_range(matrix, width, height, thresholding):
 #
 #   Active Borders / Pixel Exchange
 #
-def pixel_exchange_end(iterations, iteration_count, data, l_in, l_out, object_value):
+def pixel_exchange_end(iterations, iteration_count, image, l_in, l_out, object_value):
     if iteration_count >= iterations:
         return True
 
+    data = image.data
     for i in range(len(l_in)):
         item = l_in[i]
         pixel = data[item[1]][item[0]]
@@ -2640,92 +2641,282 @@ def apply_pixel_exchange(iterations):
         return
     image_selected = get_image_by_id(img_id)
     # Step 1:
-    l_in, l_out, pixel_avg, pixel_map = get_selection_pixel_exchange_lists(image_selected, new_selection)
-
-    print(pixel_avg)
-    print("L in len:")
-    print(len(l_in).__str__())
-    print("L out len:")
-    print(len(l_out).__str__())
+    l_in, l_out, pixel_avg, pixel_map, l_other, l_obj = get_selection_pixel_exchange_lists(image_selected, new_selection)
 
     data = image_selected.data
-    height = image_selected.height
     width = image_selected.width
+    height = image_selected.height
     iteration_count = 0
-    while not pixel_exchange_end(iterations,iteration_count, data, l_in, l_out, pixel_avg):
-        iteration_count = iteration_count + 1
 
+    while not pixel_exchange_end(iterations, iteration_count, image_selected, l_in, l_out, pixel_avg):
+        iteration_count = iteration_count + 1
+        # l_in, l_out, pixel_map = make_pixel_exchange_iteration(l_out, l_in, image_selected, pixel_map, pixel_avg)
+
+        print_lists_len(l_out, l_in)
         # Step 2
-        temp_l_out = []
-        for i in range(len(l_out)):
-            item = l_out[i]
+        temp_0 = []
+        for i_0 in range(len(l_out)):
+            item = l_out[i_0]
             x = item[0]
             y = item[1]
             pixel = data[y][x]
             f = pixel_exchange_test_function(pixel_avg, pixel)
             if f > 0:
-                temp_l_out.append(i)
+                temp_0.append(i_0)
 
-        deleted = 0
-        for i_2 in range(len(temp_l_out)):
-            item = l_out.pop(temp_l_out[i_2] - deleted)
-            deleted = deleted + 1
+        # l_out, l_in, pixel_map = level_set_switch_in(temp_0, l_out, l_in, pixel_map, width, height)
+        deleted_0 = 0
+        for temp_item in temp_0:
+            # switch in
+            item = l_out.pop(temp_item - deleted_0)
+            deleted_0 = deleted_0 + 1
             l_in.append(item)
-            pixel_map, l_out = replace_l_out_neighbor(item[0], item[1], width, height, pixel_map, l_out)
+            pixel_map[item[1]][item[0]] = -1
+            # pixel_map, l_out = replace_l_out_neighbor(item[0], item[1], width, height, pixel_map, l_out)
+            for s in range(3):
+                for t in range(3):
+                    d_x = 1 - s
+                    d_y = 1 - t
+                    if not (abs(d_x) == abs(d_y)):
+                        new_x = item[0] + d_x
+                        new_y = item[1] + d_y
+                        if 0 <= new_x < width and 0 <= new_y < height:
+                            if pixel_map[new_y][new_x] == 3:
+                                l_out.append([new_x, new_y])
+                                pixel_map[new_y][new_x] = 1
+
+        print("After Step 2")
+        print_lists_len(l_out, l_in)
 
         # Step 3
-        temp = []
-        for i_3 in range(len(l_in)):
-            x = l_in[i_3][0]
-            y = l_in[i_3][1]
+        temp_1 = []
+        for i_2 in range(len(l_in)):
+            item = l_in[i_2]
+            x = item[0]
+            y = item[1]
             if is_inside_object(x, y, width, height, pixel_map):
-                temp.append(i_3)
-        deleted = 0
-        for i_4 in range(len(temp)):
-            item = l_in.pop(temp[i_4] - deleted)
+                temp_1.append(i_2)
+
+        deleted_1 = 0
+        for temp_item in temp_1:
+            item = l_in.pop(temp_item - deleted_1)
+            deleted_1 = deleted_1 + 1
             pixel_map[item[1]][item[0]] = -3
-            deleted = deleted + 1
+
+        print("After Step 3")
+        print_lists_len(l_out, l_in)
 
         # Step 4
-        temp_l_in = []
-        for i_5 in range(len(l_in)):
-            item = l_in[i_5]
+        temp_2 = []
+        for i_4 in range(len(l_in)):
+            item = l_in[i_4]
             x = item[0]
             y = item[1]
             pixel = data[y][x]
             f = pixel_exchange_test_function(pixel_avg, pixel)
             if f < 0:
-                temp_l_in.append(i)
+                temp_2.append(i_4)
 
-        deleted = 0
-        for i_6 in range(len(temp_l_in)):
-            item = l_in.pop(temp_l_in[i_6] - deleted)
-            deleted = deleted + 1
+        # l_in, l_out, pixel_map = level_set_switch_out(temp, l_in, l_out, pixel_map, width, height)
+        deleted_2 = 0
+        for temp_item in temp_2:
+            # switch_out
+            item = l_in.pop(temp_item - deleted_2)
+            deleted_2 = deleted_2 + 1
             l_out.append(item)
-            pixel_map, l_int = replace_l_in_neighbor(item[0], item[1], width, height, pixel_map, l_in)
+            pixel_map[item[1]][item[0]] = 1
+            # pixel_map, l_in = replace_l_in_neighbor(item[0], item[1], width, height, pixel_map, l_in)
+            for s in range(3):
+                for t in range(3):
+                    d_x = 1 - s
+                    d_y = 1 - t
+                    if not (abs(d_x) == abs(d_y)):
+                        new_x = item[0] + d_x
+                        new_y = item[1] + d_y
+                        if 0 <= new_x < width and 0 <= new_y < height:
+                            if pixel_map[new_y][new_x] == (-3):
+                                l_in.append([new_x, new_y])
+                                pixel_map[new_y][new_x] = (-1)
+
+        print("After Step 4")
+        print_lists_len(l_out, l_in)
+
+        # return l_in, l_out, pixel_map
 
         # Step 5
-        temp = []
-        for i_7 in range(len(l_in)):
-            x = l_in[i_7][0]
-            y = l_in[i_7][1]
+        temp_3 = []
+        for i_6 in range(len(l_out)):
+            item = l_out[i_6]
+            x = item[0]
+            y = item[1]
             if is_outside_object(x, y, width, height, pixel_map):
-                temp.append(i_7)
-        deleted = 0
-        for i_8 in range(len(temp)):
-            item = l_in.pop(temp[i_8] - deleted)
-            pixel_map[item[1]][item[0]] = -3
-            deleted = deleted + 1
+                temp_3.append(i_6)
+
+        deleted_3 = 0
+        for temp_item in temp_3:
+            item = l_out.pop(temp_item - deleted_3)
+            deleted_3 = deleted_3 + 1
+            pixel_map[item[1]][item[0]] = 3
+
+        print("After Step 5")
+        print_lists_len(l_out, l_in)
+
+    return l_in, l_out, pixel_map, l_other, l_obj
+
+
+def print_lists_len(l_out, l_in):
+    print("L_out len: " + len(l_out).__str__())
+    print("L_in len: " + len(l_in).__str__())
+
+
+def make_pixel_exchange_iteration(l_out, l_in, image, pixel_map, pixel_avg):
+    data = image.data
+    width = image.width
+    height = image.height
+
+    # Step 2
+    temp_0 = []
+    for i_0 in range(len(l_out)):
+        item = l_out[i_0]
+        x = item[0]
+        y = item[1]
+        pixel = data[y][x]
+        f = pixel_exchange_test_function(pixel_avg, pixel)
+        if f > 0:
+            temp_0.append(i_0)
+
+    # l_out, l_in, pixel_map = level_set_switch_in(temp_0, l_out, l_in, pixel_map, width, height)
+    deleted = 0
+    for i_1 in range(len(temp_0)):
+        # switch in
+        item = l_out.pop(temp_0[i_1] - deleted)
+        deleted = deleted + 1
+        l_in.append(item)
+        pixel_map[item[0]][item[1]] = -1
+        # pixel_map, l_out = replace_l_out_neighbor(item[0], item[1], width, height, pixel_map, l_out)
+        for s in range(3):
+            for t in range(3):
+                d_x = 1 - s
+                d_y = 1 - t
+                if not (abs(d_x) == abs(d_y)):
+                    new_x = item[0] + d_x
+                    new_y = item[1] + d_y
+                    if 0 <= new_x < width and 0 <= new_y < height:
+                        if pixel_map[new_y][new_x] == 3:
+                            l_out.append([new_x, new_y])
+                            pixel_map[new_y][new_x] = 1
+
+
+    # Step 3
+    temp_1 = []
+    for i_2 in range(len(l_in)):
+        x = l_in[i_2][0]
+        y = l_in[i_2][1]
+        if is_inside_object(x, y, width, height, pixel_map):
+            temp_1.append(i_2)
+
+    deleted = 0
+    for i_3 in range(len(temp_1)):
+        item = l_in.pop(temp_1[i_3] - deleted)
+        deleted = deleted + 1
+        pixel_map[item[1]][item[0]] = -3
+
+    # Step 4
+    temp_2 = []
+    for i_4 in range(len(l_in)):
+        item = l_in[i_4]
+        x = item[0]
+        y = item[1]
+        pixel = data[y][x]
+        f = pixel_exchange_test_function(pixel_avg, pixel)
+        if f < 0:
+            temp_2.append(i_4)
+
+    # l_in, l_out, pixel_map = level_set_switch_out(temp, l_in, l_out, pixel_map, width, height)
+    deleted = 0
+    for i_5 in range(len(temp_2)):
+        # switch_out
+        item = l_in.pop(temp_2[i_5] - deleted)
+        deleted = deleted + 1
+        l_out.append(item)
+        pixel_map[item[0]][item[1]] = 1
+        # pixel_map, l_in = replace_l_in_neighbor(item[0], item[1], width, height, pixel_map, l_in)
+        for s in range(3):
+            for t in range(3):
+                d_x = 1 - s
+                d_y = 1 - t
+                if not (abs(d_x) == abs(d_y)):
+                    new_x = item[0] + d_x
+                    new_y = item[1] + d_y
+                    if 0 <= new_x < width and 0 <= new_y < height:
+                        if pixel_map[new_y][new_x] == -3:
+                            l_in.append([new_x, new_y])
+                            pixel_map[new_y][new_x] = -1
+
+    # Step 5
+    temp_3 = []
+    for i_6 in range(len(l_out)):
+        item = l_out[i_6]
+        x = item[0]
+        y = item[1]
+        if is_outside_object(x, y, width, height, pixel_map):
+            temp_3.append(i_6)
+
+    deleted = 0
+    for i_7 in range(len(temp_3)):
+        item = l_out.pop(temp_3[i_7] - deleted)
+        deleted = deleted + 1
+        pixel_map[item[1]][item[0]] = 3
 
     return l_in, l_out, pixel_map
 
 
+def level_set_switch_in(index_list, l_out, l_in, pixel_map, width, height):
+    return level_set_switch(index_list, l_out, l_in, pixel_map, width, height, -1)
+
+
+def level_set_switch_out(index_list, l_in, l_out, pixel_map, width, height):
+    return level_set_switch(index_list, l_in, l_out, pixel_map, width, height, 1)
+
+
+def level_set_switch(index_list, list_to_pop, list_to_append, pixel_map, width, height, pixel_map_new_value):
+    deleted = 0
+    for i in range(len(index_list)):
+        item = list_to_pop.pop(index_list[i] - deleted)
+        deleted = deleted + 1
+        list_to_append.append(item)
+        pixel_map[item[0]][item[1]] = pixel_map_new_value
+        pixel_map, list_to_pop = replace_list_neighbor(item[0], item[1], width, height, pixel_map, list_to_pop, pixel_map_new_value * -1)
+
+    return list_to_pop, list_to_append, pixel_map
+
+
 def is_inside_object(x, y, width, height, pixel_map):
-    return not has_neighbor_with_value(x, y, width, height, pixel_map, 1)
+    for i in range(3):
+        for j in range(3):
+            d_x = 1 - j
+            d_y = 1 - i
+            if not (int(abs(d_x)) == int(abs(d_y))):
+                new_x = x + d_x
+                new_y = y + d_y
+                if 0 <= new_x < width and 0 <= new_y < height:
+                    if pixel_map[new_y][new_x] == 1 or pixel_map[new_y][new_x] == 3:
+                        return False
+    return True
 
 
 def is_outside_object(x, y, width, height, pixel_map):
-    return not has_neighbor_with_value(x, y, width, height, pixel_map, -1)
+    for i in range(3):
+        for j in range(3):
+            d_x = 1 - j
+            d_y = 1 - i
+            if not (int(abs(d_x)) == int(abs(d_y))):
+                new_x = x + d_x
+                new_y = y + d_y
+                if 0 <= new_x < width and 0 <= new_y < height:
+                    if pixel_map[new_y][new_x] == (-1) or pixel_map[new_y][new_x] == (-3):
+                        return False
+    return True
 
 
 def has_neighbor_with_value(x, y, width, height, pixel_map, value):
@@ -2733,11 +2924,11 @@ def has_neighbor_with_value(x, y, width, height, pixel_map, value):
         for j in range(3):
             d_x = 1 - j
             d_y = 1 - i
-            if not (abs(d_x) == abs(d_y)):
+            if not (int(abs(d_x)) == int(abs(d_y))):
                 new_x = x + d_x
                 new_y = y + d_y
                 if 0 <= new_x < width and 0 <= new_y < height:
-                    if pixel_map[new_y][new_x] == value:
+                    if pixel_map[new_y][new_x] == value or pixel_map[new_y][new_x] == 3 * value:
                         return True
     return False
 
@@ -2753,7 +2944,7 @@ def replace_list_neighbor(x, y, width, height, pixel_map, list_1, sign):
                 if 0 <= new_x < width and 0 <= new_y < height:
                     if pixel_map[new_y][new_x] == (3 * sign):
                         list_1.append([new_x, new_y])
-                        pixel_map[new_y][new_x] = (1 * sign)
+                        pixel_map[new_y][new_x] = int(1 * sign)
     return pixel_map, list_1
 
 
@@ -2770,8 +2961,8 @@ def pixel_exchange_test_function(object_value, pixel_value):
     dif_r = object_value[0] - pixel_value[0]
     dif_g = object_value[1] - pixel_value[1]
     dif_b = object_value[2] - pixel_value[2]
-    mod_1 = dif_r + dif_g + dif_b
-    mod_2 = math.sqrt(pow(dif_r, 2) + pow(dif_g, 2)  + pow(dif_b, 2))
+    # mod_1 = dif_r + dif_g + dif_b
+    mod_2 = math.sqrt(pow(dif_r, 2) + pow(dif_g, 2) + pow(dif_b, 2))
 
     return 1 - mod_2 / 256
 
@@ -2779,6 +2970,8 @@ def pixel_exchange_test_function(object_value, pixel_value):
 def get_selection_pixel_exchange_lists(image_selected, selection_obj):
     l_in = []
     l_out = []
+    l_obj = []
+    l_other = []
     pixel_avg = [0, 0, 0]
     pixel_map = []
     pixel_count = 0
@@ -2801,6 +2994,7 @@ def get_selection_pixel_exchange_lists(image_selected, selection_obj):
                 if x == left or x == left + selection_obj.get_width() - 1:
                     if y == top or y == top + selection_obj.get_height() - 1:
                         row.append(3)
+                        l_other.append([x, y])
                     else:
                         row.append(1)
                         l_out.append([x, y])
@@ -2819,14 +3013,16 @@ def get_selection_pixel_exchange_lists(image_selected, selection_obj):
                             l_in.append([x, y])
                         else:
                             row.append(-3)
+                            l_obj.append([x, y])
             else:
                 row.append(3)
+                l_other.append([x, y])
         pixel_map.append(row)
     pixel_avg[0] = round(pixel_avg[0] / pixel_count, 2)
     pixel_avg[1] = round(pixel_avg[1] / pixel_count, 2)
     pixel_avg[2] = round(pixel_avg[2] / pixel_count, 2)
 
-    return l_in, l_out, pixel_avg, pixel_map
+    return l_in, l_out, pixel_avg, pixel_map, l_obj, l_other
 
 
 def pixel_exchange_window():
@@ -2877,13 +3073,17 @@ class PixelExchangeWindow:
     def pixel_exchange_wrapper(self):
         iterations = int(self.txtIterationCount.get())
         print("Interations : " + iterations.__str__())
-        l_in, l_out, pixel_map = apply_pixel_exchange(iterations)
+        l_in, l_out, pixel_map, l_obj, l_other = apply_pixel_exchange(iterations)
         draw_ati_image(editableImage)
         red = [255, 0, 0]
         blue = [0, 0, 255]
+        print("L_in lenght: " + len(l_in).__str__())
+        print("L_out lenght: " + len(l_out).__str__())
+
         draw_pixel_list(l_in, red, editableImage.top_left)
         draw_pixel_list(l_out, blue, editableImage.top_left)
-
+        #draw_pixel_list(l_obj, [0, 255, 0], editableImage.top_left)
+        #draw_pixel_list(l_other, [255,255,255], editableImage.top_left)
         return
 
 #
@@ -2891,8 +3091,6 @@ class PixelExchangeWindow:
 #
 
 def get_image_by_id(image_id):
-    print("Image id: ")
-    print (image_id)
     if image_id == 0 or image_id == 2:
         return editableImage
     elif image_id == 1:
