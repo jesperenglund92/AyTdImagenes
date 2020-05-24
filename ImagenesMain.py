@@ -757,7 +757,12 @@ def load_jpg(filename):
     global editableImage
     global originalImage
 
-    #print(filename)
+    """print(filename)
+    print(path.dirname(filename))
+    print(path.join(path.dirname(filename), "Hola.jps"))
+    print(path.normpath(path.join(path.dirname(filename), "Hola.jps")))
+    print(path.exists(path.normcase(path.join(path.dirname(filename), path.basename(filename)))))"""
+    print(has_next_file(filename))
     im = Image.open(filename, 'r')
     width, height = im.size
     pixel_values = list(im.getdata())
@@ -777,6 +782,7 @@ def load_jpg(filename):
     editableImage.max_gray_level = 255
     editableImage.set_restore_image()
     editableImage.values_set = True
+    editableImage.filename = filename
 
     originalImage = editableImage.get_copy()
     originalImage.editable = False
@@ -790,6 +796,26 @@ def load_jpg(filename):
     # print(s)
 
     return
+
+
+def has_next_file(filename):
+    dirname = path.dirname(filename)
+    basename = path.basename(filename)
+    array_name = re.split('(\d+)', basename)
+    number_value = array_name[1]
+    number_length = len(number_value)
+    num = int(number_value)
+    num = num + 1
+    num_as_str = num.__str__()
+    while number_length > len(num_as_str):
+        num_as_str = '0' + num_as_str
+
+    if number_length < len(num_as_str):
+        print("Error")
+        return False, ""
+    new_path = path.normpath(path.join(dirname, array_name[0] + num_as_str + array_name[2]))
+    path_exits = path.exists(new_path)
+    return path_exits, new_path
 
 
 #
