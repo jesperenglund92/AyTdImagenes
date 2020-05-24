@@ -6,7 +6,9 @@ from classes import *
 import math
 import numpy as np
 import matplotlib.pyplot as plt
-
+from PIL import Image
+from os import path
+import re
 
 class Window(Frame):
     def __init__(self, master=None):
@@ -534,9 +536,10 @@ def open_file():
         ('RAW', '*.raw'),
         ('PGM', '*.pgm'),  # semicolon trick
         ('PPM', '*.ppm'),
+        ('JPG', "*.jpg"),
         ('All files', '*'),
     ]
-    filename = filedialog.askopenfilename(initialdir="/", title="Select file", filetypes=file_types)
+    filename = filedialog.askopenfilename(initialdir="/Users/JuanPablo/Documents/ITBA/ATI/Imagenes", title="Select file", filetypes=file_types)
     if filename:
         file = open(filename, "rb")
         if filename.lower().endswith('.raw'):
@@ -549,6 +552,10 @@ def open_file():
         if filename.lower().endswith('.ppm'):
             editableImage.image_type = 'ppm'
             load_ppm(file)
+            draw_images()
+        if filename.lower().endswith('.jpg') or filename.lower().endswith('.jpeg'):
+            editableImage.image_type = 'ppm'
+            load_jpg(file.name)
             draw_images()
         file.close()
     else:
@@ -744,6 +751,45 @@ def read_ppm_pgm_header(file, image_type):
         elif count == 3:  # Max gray level
             max_val = int(line.strip())
     return magic_num, width, height, max_val
+
+
+def load_jpg(filename):
+    global editableImage
+    global originalImage
+
+    #print(filename)
+    im = Image.open(filename, 'r')
+    width, height = im.size
+    pixel_values = list(im.getdata())
+
+    image_data = []
+    for y in range(height):
+        row = []
+        for x in range(width):
+            pixel_value = pixel_values[y * width + x]
+            row.append([int(pixel_value[0]), int(pixel_value[1]), int(pixel_value[2])])
+        image_data.append(row)
+
+    editableImage.data = image_data
+    editableImage.width = width
+    editableImage.height = height
+    editableImage.magic_num = 'P6'
+    editableImage.max_gray_level = 255
+    editableImage.set_restore_image()
+    editableImage.values_set = True
+
+    originalImage = editableImage.get_copy()
+    originalImage.editable = False
+    originalImage.id = 1
+    originalImage.values_set = True
+    originalImage.image_type = '.ppm'
+    app.enable_image_menu()
+
+    # filename = path.basename(file.name)
+    # s = re.split('(\d+)', filename)
+    # print(s)
+
+    return
 
 
 #
@@ -2969,12 +3015,12 @@ def is_click_in_images(pos):
 
 def update_selection_values(selection):
     image_id = -1
-    print(len(images))
+    # print(len(images))
     for i in range(len(images)):
         image = get_image_by_id(i)
         if image.collidepoint(selection.new_x, selection.new_y):
             image_id = image.id
-    print(image_id)
+    # print(image_id)
     if image_id != -1:
         image_selected = get_image_by_id(image_id)
         selected_data = image_data_in_selection(image_selected)
