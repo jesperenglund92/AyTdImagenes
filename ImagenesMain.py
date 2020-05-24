@@ -1447,6 +1447,10 @@ def draw_images():
 
     draw_ati_image(editableImage)
     draw_ati_image(originalImage)
+    tl = originalImage.get_top_left()
+    rect = pygame.Rect(tl[0], tl[1], originalImage.width, originalImage.height)
+    pygame.display.update(rect)
+
 
 
 def draw_pixel_list(pixel_list, pixel_color, top_left):
@@ -3052,12 +3056,14 @@ class PixelExchangeWindow:
         if not has_next:
             print("Not exists next")
             return
+        rect = pygame.Rect(editableImage.top_left[0], editableImage.top_left[1], editableImage.width, editableImage.height)
 
         while has_next:
             load_jpg(next_filename)
             draw_ati_image(editableImage)
             self.update_curve_wrapper()
-            pygame.display.flip()
+
+            pygame.display.update(rect)
             has_next, next_filename = has_next_file(next_filename)
 
         #print("Not implemented")
@@ -3335,11 +3341,22 @@ def main():
     """open_raw_image_testing()"""
 
     done = False
+
+    #rect = pygame.Rect(editableImage.top_left[0], editableImage.top_left[1], editableImage.width, editableImage.height)
     while not done:
+        x, y, width, height = 0, 0, 0, 0
+        if editableImage != None:
+            tl = editableImage.top_left
+            width = editableImage.width
+            height = editableImage.height
+            if tl != None:
+                x = tl[0]
+                y = tl[1]
+        rect = pygame.Rect(x, y, width, height)
         app.update()
         if get_input():
             done = True
-        pygame.display.flip()
+        pygame.display.update(rect)
 
 
 root = Tk()
