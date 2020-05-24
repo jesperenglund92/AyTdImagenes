@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from PIL import Image
 from os import path
 import re
+import time
 
 class Window(Frame):
     def __init__(self, master=None):
@@ -757,12 +758,6 @@ def load_jpg(filename):
     global editableImage
     global originalImage
 
-    """print(filename)
-    print(path.dirname(filename))
-    print(path.join(path.dirname(filename), "Hola.jps"))
-    print(path.normpath(path.join(path.dirname(filename), "Hola.jps")))
-    print(path.exists(path.normcase(path.join(path.dirname(filename), path.basename(filename)))))"""
-    print(has_next_file(filename))
     im = Image.open(filename, 'r')
     width, height = im.size
     pixel_values = list(im.getdata())
@@ -790,11 +785,6 @@ def load_jpg(filename):
     originalImage.values_set = True
     originalImage.image_type = '.ppm'
     app.enable_image_menu()
-
-    # filename = path.basename(file.name)
-    # s = re.split('(\d+)', filename)
-    # print(s)
-
     return
 
 
@@ -1443,6 +1433,7 @@ def draw_ati_image(image):
             surface.set_at((x + image.top_left[0], y + image.top_left[1]), image.get_at([x, y]))
 
 
+
 def draw_images():
     global editableImage
     global originalImage
@@ -1467,7 +1458,7 @@ def draw_pixel_list(pixel_list, pixel_color, top_left):
         x = item[0] + left
         y = item[1] + top
         surface.set_at((x, y), pixel_color)
-
+    #pygame.display.flip()
 
 #
 #   View
@@ -2700,6 +2691,26 @@ def pixel_exchange_end(iterations, iteration_count, image, l_in, l_out, object_v
     return True
 
 
+def update_pixel_exchange(l_out, l_in, pixel_map, pixel_avg, iterations):
+    img_id = -1
+    for i in range(len(images)):
+        image = get_image_by_id(i)
+        if image.collidepoint(new_selection.new_x, new_selection.new_y):
+            img_id = image.id
+
+    if img_id == -1:
+        print("No image selected")
+        return
+    image_selected = get_image_by_id(img_id)
+
+    iteration_count = 0
+    while not pixel_exchange_end(iterations, iteration_count, image_selected, l_in, l_out, pixel_avg):
+        iteration_count = iteration_count + 1
+        l_in, l_out, pixel_map = make_pixel_exchange_iteration(l_out, l_in, image_selected, pixel_map, pixel_avg)
+
+    return l_in, l_out, pixel_map, pixel_avg
+
+
 def apply_pixel_exchange(iterations):
     global new_selection
     img_id = -1
@@ -2715,7 +2726,6 @@ def apply_pixel_exchange(iterations):
     # Step 1:
     l_in, l_out, pixel_avg, pixel_map, l_other, l_obj = get_selection_pixel_exchange_lists(image_selected,
                                                                                            new_selection)
-
     data = image_selected.data
     width = image_selected.width
     height = image_selected.height
@@ -2725,7 +2735,7 @@ def apply_pixel_exchange(iterations):
         iteration_count = iteration_count + 1
         l_in, l_out, pixel_map = make_pixel_exchange_iteration(l_out, l_in, image_selected, pixel_map, pixel_avg)
 
-    return l_in, l_out, pixel_map
+    return l_in, l_out, pixel_map, pixel_avg
 
 
 def print_lists_len(l_out, l_in):
@@ -2964,9 +2974,18 @@ class PixelExchangeWindow:
         self.window.title("Pixel Exchange Algoritm")
         self.window.geometry("260x140")
 
+        self.l_in = []
+        self.l_out = []
+        self.pixel_map = []
+        self.pixel_avg = []
+
         selection_info = 0
         iteration_info = 1
         apply_algoritm = 2
+        next_image = 3
+        update_curve = 4
+        run_as_video = 5
+
         Label(self.window, text="Selection info: ").grid(row=selection_info, column=0)
         self.btnInfo = Button(self.window, text="Info", command=self.get_selection_info)
         self.btnInfo.grid(row=selection_info, column=1)
@@ -2979,6 +2998,18 @@ class PixelExchangeWindow:
         Label(self.window, text="Pixel exchange").grid(row=apply_algoritm, column=0)
         self.btnPixelExchange = Button(self.window, text="Apply pixel exchange", command=self.pixel_exchange_wrapper)
         self.btnPixelExchange.grid(row=apply_algoritm, column=1)
+
+        Label(self.window, text="Change Image").grid(row=next_image, column=0)
+        self.btnLoadImage = Button(self.window, text="Load next Image", command=self.load_next_image_wrapper)
+        self.btnLoadImage.grid(row=next_image, column=1)
+
+        Label(self.window, text="Update Curve").grid(row=update_curve, column=0)
+        self.btnUpdateCurve = Button(self.window, text="Update", command=self.update_curve_wrapper)
+        self.btnUpdateCurve.grid(row=update_curve, column=1)
+
+        Label(self.window, text="Change Image").grid(row=run_as_video, column=0)
+        self.btnRunVideo = Button(self.window, text="Run as video", command=self.run_as_video_wrapper)
+        self.btnRunVideo.grid(row=run_as_video, column=1)
 
     def get_selection_info(self):
         print("Selection Info")
@@ -3000,20 +3031,80 @@ class PixelExchangeWindow:
 
     def pixel_exchange_wrapper(self):
         iterations = int(self.txtIterationCount.get())
-        print("Interations : " + iterations.__str__())
-        l_in, l_out, pixel_map = apply_pixel_exchange(iterations)
+        # print("Interations : " + iterations.__str__())
+        l_in, l_out, pixel_map, pixel_avg = apply_pixel_exchange(iterations)
+
+        self.l_in = l_in
+        self.l_out = l_out
+        self.pixel_map = pixel_map
+        self.pixel_avg = pixel_avg
+
         draw_ati_image(editableImage)
         red = [255, 0, 0]
         blue = [0, 0, 255]
-        print("L_in lenght: " + len(l_in).__str__())
-        print("L_out lenght: " + len(l_out).__str__())
-
         draw_pixel_list(l_in, red, editableImage.top_left)
         draw_pixel_list(l_out, blue, editableImage.top_left)
-        # draw_pixel_list(l_obj, [0, 255, 0], editableImage.top_left)
-        # draw_pixel_list(l_other, [255,255,255], editableImage.top_left)
         return
 
+    def run_as_video_wrapper(self):
+        filename = editableImage.filename
+        has_next, next_filename = has_next_file(filename)
+        if not has_next:
+            print("Not exists next")
+            return
+
+        while has_next:
+            load_jpg(next_filename)
+            draw_ati_image(editableImage)
+            self.update_curve_wrapper()
+            pygame.display.flip()
+            has_next, next_filename = has_next_file(next_filename)
+
+        #print("Not implemented")
+        return
+
+    def update_curve_wrapper(self):
+        print("Update curve")
+        iterations = int(self.txtIterationCount.get())
+        l_in, l_out, pixel_map, pixel_avg = update_pixel_exchange(self.l_out, self.l_in, self.pixel_map,
+                                                                  self.pixel_avg, iterations)
+        self.l_in = l_in
+        self.l_out = l_out
+        self.pixel_map = pixel_map
+        self.pixel_avg = pixel_avg
+
+        draw_ati_image(editableImage)
+        red = [255, 0, 0]
+        blue = [0, 0, 255]
+        draw_pixel_list(l_in, red, editableImage.top_left)
+        draw_pixel_list(l_out, blue, editableImage.top_left)
+
+        # print("Not implemented")
+        return
+
+    def load_next_image_wrapper(self):
+        filename = editableImage.filename
+        if filename == '':
+            print("There is no next image")
+            return
+        has_next, next_filename = has_next_file(editableImage.filename)
+
+        if not has_next:
+            print("Not exists next")
+            return
+
+        load_jpg(next_filename)
+        draw_ati_image(editableImage)
+        # Note: Hay que actaulizar ambas listas:
+
+        if len(self.l_in) == 0 or len(self.l_out) == 0:
+            print ("No list found")
+            return
+
+        red = [255, 0, 0]
+        blue = [0, 0, 255]
+        draw_pixel_list(self.l_in, red, editableImage.top_left)
+        draw_pixel_list(self.l_out, blue, editableImage.top_left)
 
 #
 #   Getters
