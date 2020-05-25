@@ -10,6 +10,7 @@ from PIL import Image
 from os import path
 import re
 import time
+from pygame.locals import *
 
 class Window(Frame):
     def __init__(self, master=None):
@@ -1430,8 +1431,8 @@ def draw_ati_image(image):
 
     for x in range(0, width):
         for y in range(0, height):
+            #if surface.get_at((x + image.top_left[0], y + image.top_left[1])) != image.get_at([x, y]):
             surface.set_at((x + image.top_left[0], y + image.top_left[1]), image.get_at([x, y]))
-
 
 
 def draw_images():
@@ -1442,7 +1443,11 @@ def draw_images():
     originalImage.set_top_left((40 + originalImage.width, 20))
     editableImage.active = False
     originalImage.active = False
-    pygame.display.set_mode((60 + editableImage.width * 2, 40 + editableImage.height))
+    flags = DOUBLEBUF
+    bpp = 24
+    screen = pygame.display.set_mode((60 + editableImage.width * 2, 40 + editableImage.height), flags, bpp)
+    screen.set_alpha(None)
+
     surface.fill((0, 0, 0))
 
     draw_ati_image(editableImage)
@@ -1450,7 +1455,6 @@ def draw_images():
     tl = originalImage.get_top_left()
     rect = pygame.Rect(tl[0], tl[1], originalImage.width, originalImage.height)
     pygame.display.update(rect)
-
 
 
 def draw_pixel_list(pixel_list, pixel_color, top_left):
@@ -1462,7 +1466,6 @@ def draw_pixel_list(pixel_list, pixel_color, top_left):
         x = item[0] + left
         y = item[1] + top
         surface.set_at((x, y), pixel_color)
-    #pygame.display.flip()
 
 #
 #   View
@@ -2674,7 +2677,7 @@ def apply_thresholding_by_range(matrix, width, height, thresholding):
 #
 #   Active Borders / Pixel Exchange
 #
-def pixel_exchange_end(iterations, iteration_count, image, l_in, l_out, object_value):
+def pixel_exchange_end(iterations, iteration_count, image, l_in, l_out, object_value, tolerance):
     if iteration_count >= iterations:
         return True
 
@@ -2682,20 +2685,20 @@ def pixel_exchange_end(iterations, iteration_count, image, l_in, l_out, object_v
     for i in range(len(l_in)):
         item = l_in[i]
         pixel = data[item[1]][item[0]]
-        f = pixel_exchange_test_function(object_value, pixel)
+        f = pixel_exchange_test_function(object_value, pixel, tolerance)
         if f < 0:
             return False
 
     for j in range(len(l_out)):
         item = l_out[j]
         pixel = data[item[1]][item[0]]
-        f = pixel_exchange_test_function(object_value, pixel)
+        f = pixel_exchange_test_function(object_value, pixel, tolerance)
         if f > 0:
             return False
     return True
 
 
-def update_pixel_exchange(l_out, l_in, pixel_map, pixel_avg, iterations):
+def update_pixel_exchange(l_out, l_in, pixel_map, pixel_avg, iterations, tolerance):
     img_id = -1
     for i in range(len(images)):
         image = get_image_by_id(i)
@@ -2708,14 +2711,14 @@ def update_pixel_exchange(l_out, l_in, pixel_map, pixel_avg, iterations):
     image_selected = get_image_by_id(img_id)
 
     iteration_count = 0
-    while not pixel_exchange_end(iterations, iteration_count, image_selected, l_in, l_out, pixel_avg):
+    while not pixel_exchange_end(iterations, iteration_count, image_selected, l_in, l_out, pixel_avg, tolerance):
         iteration_count = iteration_count + 1
-        l_in, l_out, pixel_map = make_pixel_exchange_iteration(l_out, l_in, image_selected, pixel_map, pixel_avg)
+        l_in, l_out, pixel_map = make_pixel_exchange_iteration(l_out, l_in, image_selected, pixel_map, pixel_avg, tolerance)
 
     return l_in, l_out, pixel_map, pixel_avg
 
 
-def apply_pixel_exchange(iterations):
+def apply_pixel_exchange(iterations, tolerance):
     global new_selection
     img_id = -1
     for i in range(len(images)):
@@ -2730,14 +2733,11 @@ def apply_pixel_exchange(iterations):
     # Step 1:
     l_in, l_out, pixel_avg, pixel_map, l_other, l_obj = get_selection_pixel_exchange_lists(image_selected,
                                                                                            new_selection)
-    data = image_selected.data
-    width = image_selected.width
-    height = image_selected.height
     iteration_count = 0
 
-    while not pixel_exchange_end(iterations, iteration_count, image_selected, l_in, l_out, pixel_avg):
+    while not pixel_exchange_end(iterations, iteration_count, image_selected, l_in, l_out, pixel_avg, tolerance):
         iteration_count = iteration_count + 1
-        l_in, l_out, pixel_map = make_pixel_exchange_iteration(l_out, l_in, image_selected, pixel_map, pixel_avg)
+        l_in, l_out, pixel_map = make_pixel_exchange_iteration(l_out, l_in, image_selected, pixel_map, pixel_avg, tolerance)
 
     return l_in, l_out, pixel_map, pixel_avg
 
@@ -2747,7 +2747,7 @@ def print_lists_len(l_out, l_in):
     print("L_in len: " + len(l_in).__str__())
 
 
-def make_pixel_exchange_iteration(l_out, l_in, image, pixel_map, pixel_avg):
+def make_pixel_exchange_iteration(l_out, l_in, image, pixel_map, pixel_avg, tolerance):
     data = image.data
     width = image.width
     height = image.height
@@ -2759,7 +2759,7 @@ def make_pixel_exchange_iteration(l_out, l_in, image, pixel_map, pixel_avg):
         x = item[0]
         y = item[1]
         pixel = data[y][x]
-        f = pixel_exchange_test_function(pixel_avg, pixel)
+        f = pixel_exchange_test_function(pixel_avg, pixel, tolerance)
         if f > 0:
             temp_0.append(i_0)
 
@@ -2787,7 +2787,7 @@ def make_pixel_exchange_iteration(l_out, l_in, image, pixel_map, pixel_avg):
         x = item[0]
         y = item[1]
         pixel = data[y][x]
-        f = pixel_exchange_test_function(pixel_avg, pixel)
+        f = pixel_exchange_test_function(pixel_avg, pixel, tolerance)
         if f < 0:
             temp_2.append(i_4)
 
@@ -2897,7 +2897,10 @@ def replace_l_in_neighbor(x, y, width, height, pixel_map, l_in):
     return replace_list_neighbor(x, y, width, height, pixel_map, l_in, -1)
 
 
-def pixel_exchange_test_function(object_value, pixel_value):
+def pixel_exchange_test_function(object_value, pixel_value, tolerance):
+    # tolerance is a number between 1 and 100
+    # with 1 tolernce has
+    new_tolerance = round(tolerance/100, 2)
     f = 0
     dif_r = object_value[0] - pixel_value[0]
     dif_g = object_value[1] - pixel_value[1]
@@ -2905,7 +2908,7 @@ def pixel_exchange_test_function(object_value, pixel_value):
     # mod_1 = dif_r + dif_g + dif_b
     mod_2 = math.sqrt(pow(dif_r, 2) + pow(dif_g, 2) + pow(dif_b, 2))
 
-    return 0.1 - mod_2 / (256 * math.sqrt(3))
+    return new_tolerance - mod_2 / (256 * math.sqrt(3))
 
 
 def get_selection_pixel_exchange_lists(image_selected, selection_obj):
@@ -2976,66 +2979,52 @@ class PixelExchangeWindow:
         self.window = Tk()
         self.window.focus_set()
         self.window.title("Pixel Exchange Algoritm")
-        self.window.geometry("260x140")
+        self.window.geometry("260x180")
 
         self.l_in = []
         self.l_out = []
         self.pixel_map = []
         self.pixel_avg = []
 
-        selection_info = 0
-        iteration_info = 1
-        apply_algoritm = 2
-        next_image = 3
-        update_curve = 4
-        run_as_video = 5
-
-        Label(self.window, text="Selection info: ").grid(row=selection_info, column=0)
-        self.btnInfo = Button(self.window, text="Info", command=self.get_selection_info)
-        self.btnInfo.grid(row=selection_info, column=1)
+        pixel_tolerance = 1
+        iteration_info = 2
+        apply_algoritm = 3
+        next_image = 4
+        update_curve = 5
+        run_as_video = 6
+        colspan = 3
+        padx = 8
+        pady = 2
 
         Label(self.window, text="Iteration count: ").grid(row=iteration_info, column=0)
         self.iteration_count = StringVar()
         self.txtIterationCount = Entry(self.window, textvariable=self.iteration_count)
-        self.txtIterationCount.grid(row=iteration_info, column=1)
+        self.txtIterationCount.grid(row=iteration_info, column=1, padx=padx, pady=pady, columnspan=colspan)
+
+        Label(self.window, text="Pixel tolerance: ").grid(row=pixel_tolerance, column=0)
+        self.sclTolerance = Scale(self.window, from_=1, to=100, resolution=1, orient=HORIZONTAL, length=100)
+        self.sclTolerance.grid(row=pixel_tolerance, column=1, padx=padx, pady=pady)
+        self.sclTolerance.set(10)
 
         Label(self.window, text="Pixel exchange").grid(row=apply_algoritm, column=0)
         self.btnPixelExchange = Button(self.window, text="Apply pixel exchange", command=self.pixel_exchange_wrapper)
-        self.btnPixelExchange.grid(row=apply_algoritm, column=1)
+        self.btnPixelExchange.grid(row=apply_algoritm, column=1, padx=padx, pady=pady, columnspan=colspan)
 
         Label(self.window, text="Change Image").grid(row=next_image, column=0)
         self.btnLoadImage = Button(self.window, text="Load next Image", command=self.load_next_image_wrapper)
-        self.btnLoadImage.grid(row=next_image, column=1)
+        self.btnLoadImage.grid(row=next_image, column=1, padx=padx, pady=pady, columnspan=colspan)
 
         Label(self.window, text="Update Curve").grid(row=update_curve, column=0)
         self.btnUpdateCurve = Button(self.window, text="Update", command=self.update_curve_wrapper)
-        self.btnUpdateCurve.grid(row=update_curve, column=1)
+        self.btnUpdateCurve.grid(row=update_curve, column=1, padx=padx, pady=pady, columnspan=colspan)
 
         Label(self.window, text="Change Image").grid(row=run_as_video, column=0)
         self.btnRunVideo = Button(self.window, text="Run as video", command=self.run_as_video_wrapper)
-        self.btnRunVideo.grid(row=run_as_video, column=1)
-
-    def get_selection_info(self):
-        print("Selection Info")
-        # print(new_selection.get_top_left())
-        # print(new_selection.get_bottom_right())
-        array = [-1, 4, 6, 7, -4, 6]
-        temp_b = []
-        for a in range(len(array)):
-            if array[a] > 0:
-                temp_b.append(a)
-        print(array)
-        print(temp_b)
-        deleted = 0
-        for i in range(len(temp_b)):
-            array.pop(temp_b[i] - deleted)
-            deleted = deleted + 1
-        print(array)
-        print(temp_b)
+        self.btnRunVideo.grid(row=run_as_video, column=1, padx=padx, pady=pady, columnspan=colspan)
 
     def pixel_exchange_wrapper(self):
         iterations = int(self.txtIterationCount.get())
-        # print("Interations : " + iterations.__str__())
+        pixel_tolerance = int(self.sclTolerance.get())
         l_in, l_out, pixel_map, pixel_avg = apply_pixel_exchange(iterations)
 
         self.l_in = l_in
@@ -3051,6 +3040,20 @@ class PixelExchangeWindow:
         return
 
     def run_as_video_wrapper(self):
+        if len(self.l_in) == 0 and len(self.l_out) == 0:
+            iter_str = self.txtIterationCount.get()
+            tolerance = int(self.sclTolerance.get())
+            if len(iter_str) == 0:
+                print("No Iteration selected")
+                return
+            iterations = int(iter_str)
+            l_in, l_out, pixel_map, pixel_avg = apply_pixel_exchange(iterations, tolerance)
+
+            self.l_in = l_in
+            self.l_out = l_out
+            self.pixel_map = pixel_map
+            self.pixel_avg = pixel_avg
+
         filename = editableImage.filename
         has_next, next_filename = has_next_file(filename)
         if not has_next:
@@ -3070,10 +3073,10 @@ class PixelExchangeWindow:
         return
 
     def update_curve_wrapper(self):
-        print("Update curve")
         iterations = int(self.txtIterationCount.get())
+        tolerance = int(self.sclTolerance.get())
         l_in, l_out, pixel_map, pixel_avg = update_pixel_exchange(self.l_out, self.l_in, self.pixel_map,
-                                                                  self.pixel_avg, iterations)
+                                                                  self.pixel_avg, iterations, tolerance)
         self.l_in = l_in
         self.l_out = l_out
         self.pixel_map = pixel_map
@@ -3084,8 +3087,6 @@ class PixelExchangeWindow:
         blue = [0, 0, 255]
         draw_pixel_list(l_in, red, editableImage.top_left)
         draw_pixel_list(l_out, blue, editableImage.top_left)
-
-        # print("Not implemented")
         return
 
     def load_next_image_wrapper(self):
@@ -3341,8 +3342,6 @@ def main():
     """open_raw_image_testing()"""
 
     done = False
-
-    #rect = pygame.Rect(editableImage.top_left[0], editableImage.top_left[1], editableImage.width, editableImage.height)
     while not done:
         x, y, width, height = 0, 0, 0, 0
         if editableImage != None:
@@ -3364,6 +3363,7 @@ pygame.init()
 ScreenSize = (1, 1)
 surface = pygame.display.set_mode(ScreenSize)
 images = []
+pygame.event.set_allowed([MOUSEMOTION, MOUSEBUTTONUP, MOUSEBUTTONDOWN, QUIT])
 # list of images, in case we need to be more flexible than just one editable
 # and one original image, possible to add more.
 app = Window(root)
