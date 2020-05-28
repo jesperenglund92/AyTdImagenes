@@ -180,6 +180,7 @@ class Window(Frame):
 def hough_line(vote_thresh, theta_step=1, rho_step=1):
     # Rho and Theta ranges
     img = np.array(editableImage.data)
+    thetas = np.deg2rad(np.arange(-90.0, 90.0, theta_step))
     width, height = img.shape
     diag_len = int(np.ceil(np.sqrt(width ** 2 + height ** 2)))  # max_dist
     rhos = np.linspace(-diag_len, diag_len, int((diag_len * 2/rho_step) + 1))
