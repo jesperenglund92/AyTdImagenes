@@ -6,6 +6,11 @@ from classes import *
 import math
 import numpy as np
 import matplotlib.pyplot as plt
+from PIL import Image
+from os import path
+import re
+import time
+from pygame.locals import *
 
 
 class Window(Frame):
@@ -68,6 +73,7 @@ class Window(Frame):
         self.effect_menu.add_command(label="Thresholding Algoritms", command=thresholding_algoritm_window)
         self.effect_menu.add_command(label="Bilateral Filter", command=bilateral_window)
         self.effect_menu.add_command(label="Canny Algoritm", command=canny_window)
+        self.effect_menu.add_command(label="Pixel Exchange", command=pixel_exchange_window)
         self.menu.add_cascade(label="Effects", menu=self.effect_menu)
 
         Label(master, text="x: ").grid(row=0, column=0)
@@ -524,20 +530,24 @@ class NoiseWindow:
 #
 #   Open Files
 #
-
+dir = "/"
 def open_file():
     global editableImage
     global originalImage
-
+    global dir
     file_types = [
+        ('All files', '*'),
         ('RAW', '*.raw'),
         ('PGM', '*.pgm'),  # semicolon trick
         ('PPM', '*.ppm'),
-        ('All files', '*'),
+        ('JPG', "*.jpg"),
     ]
-    filename = filedialog.askopenfilename(initialdir="/", title="Select file", filetypes=file_types)
+    # dir = "/Users/JuanPablo/Documents/ITBA/ATI/Imagenes"
+    filename = filedialog.askopenfilename(initialdir=dir,
+                                          title="Select file", filetypes=file_types)
     if filename:
         file = open(filename, "rb")
+        dir = path.dirname(filename)
         if filename.lower().endswith('.raw'):
             editableImage.image_type = 'raw'
             RawWindow(file)
@@ -548,6 +558,10 @@ def open_file():
         if filename.lower().endswith('.ppm'):
             editableImage.image_type = 'ppm'
             load_ppm(file)
+            draw_images()
+        if filename.lower().endswith('.jpg') or filename.lower().endswith('.jpeg'):
+            editableImage.image_type = 'ppm'
+            load_jpg(file.name)
             draw_images()
         file.close()
     else:
@@ -560,7 +574,7 @@ class RawWindow:
         self.window = Tk()
         self.window.focus_set()
         self.window.title("Load Raw file")
-        self.window.geometry("280x140")
+        self.window.geometry("280x160")
         self.file = file
         self.font = font.Font(weight="bold")
 
@@ -743,6 +757,88 @@ def read_ppm_pgm_header(file, image_type):
         elif count == 3:  # Max gray level
             max_val = int(line.strip())
     return magic_num, width, height, max_val
+
+
+def load_jpg(filename):
+    global editableImage
+    global originalImage
+
+    im = Image.open(filename, 'r')
+    width, height = im.size
+    pixel_values = list(im.getdata())
+
+    image_data = []
+    for y in range(height):
+        row = []
+        for x in range(width):
+            pixel_value = pixel_values[y * width + x]
+            row.append([int(pixel_value[0]), int(pixel_value[1]), int(pixel_value[2])])
+        image_data.append(row)
+
+    editableImage.data = image_data
+    editableImage.width = width
+    editableImage.height = height
+    editableImage.magic_num = 'P6'
+    editableImage.max_gray_level = 255
+    editableImage.set_restore_image()
+    editableImage.values_set = True
+    editableImage.filename = filename
+
+    originalImage = editableImage.get_copy()
+    originalImage.editable = False
+    originalImage.id = 1
+    originalImage.values_set = True
+    originalImage.image_type = '.ppm'
+    app.enable_image_menu()
+    return
+
+
+def has_next_file(filename):
+    dirname = path.dirname(filename)
+    basename = path.basename(filename)
+    array_name = re.split('(\d+)', basename)
+    number_value = array_name[1]
+    number_length = len(number_value)
+    num = int(number_value)
+    num = num + 1
+    num_as_str = num.__str__()
+    while number_length > len(num_as_str):
+        num_as_str = '0' + num_as_str
+
+    if number_length < len(num_as_str):
+        print("Error")
+        return False, ""
+    new_path = path.normpath(path.join(dirname, array_name[0] + num_as_str + array_name[2]))
+    path_exits = path.exists(new_path)
+    return path_exits, new_path
+
+
+def get_jpg_array(filename):
+    images_array = []
+    has_next, next_filename = has_next_file(filename)
+    while has_next:
+        im = Image.open(next_filename, 'r')
+        width, height = im.size
+        pixel_values = list(im.getdata())
+        image_data = []
+        for y in range(height):
+            row = []
+            for x in range(width):
+                pixel_value = pixel_values[y * width + x]
+                row.append([int(pixel_value[0]), int(pixel_value[1]), int(pixel_value[2])])
+            image_data.append(row)
+
+        new_image = ATIImage()
+        new_image.width = width
+        new_image.height = height
+        new_image.data = image_data
+        new_image.filename = next_filename
+        # new_image.set_restore_image()
+        new_image.values_set = True
+        new_image.top_left = editableImage.top_left
+        images_array.append(new_image)
+        has_next, next_filename = has_next_file(next_filename)
+    return images_array
 
 
 #
@@ -1134,8 +1230,17 @@ class NewWhiteCircle:
                          active=False, editable=True, top_left=top_left)
         image.max_gray_level = 255
         image.magic_num = 'P6'
+        images.append(image)
         editableImage = image
+        editableImage.set_restore_image()
+        editableImage.id = 0
+        editableImage.values_set = True
+
         originalImage = image.get_copy()
+        originalImage.editable = False
+        originalImage.id = 1
+        originalImage.values_set = True
+
         originalImage.set_top_left((image.top_left[0] + image.width, 20))
         draw_images()
         app.enable_image_menu()
@@ -1212,8 +1317,17 @@ class NewWhiteSquare:
                          editable=True, top_left=top_left)
         image.max_gray_level = 255
         image.magic_num = 'P6'
+        images.append(image)
         editableImage = image
+        editableImage.set_restore_image()
+        editableImage.id = 0
+        editableImage.values_set = True
+
         originalImage = image.get_copy()
+        originalImage.editable = False
+        originalImage.id = 1
+        originalImage.values_set = True
+
         originalImage.set_top_left((image.top_left[0] + image.width, 20))
         draw_images()
         app.enable_image_menu()
@@ -1349,6 +1463,7 @@ def draw_ati_image(image):
 
     for x in range(0, width):
         for y in range(0, height):
+            # if surface.get_at((x + image.top_left[0], y + image.top_left[1])) != image.get_at([x, y]):
             surface.set_at((x + image.top_left[0], y + image.top_left[1]), image.get_at([x, y]))
 
 
@@ -1360,12 +1475,37 @@ def draw_images():
     originalImage.set_top_left((40 + originalImage.width, 20))
     editableImage.active = False
     originalImage.active = False
-    pygame.display.set_mode((60 + editableImage.width * 2, 40 + editableImage.height))
+    flags = DOUBLEBUF
+    bpp = 24
+    screen = pygame.display.set_mode((60 + editableImage.width * 2, 40 + editableImage.height), flags, bpp)
+    screen.set_alpha(None)
+
     surface.fill((0, 0, 0))
 
     draw_ati_image(editableImage)
     draw_ati_image(originalImage)
+    tl = originalImage.get_top_left()
+    rect = pygame.Rect(tl[0], tl[1], originalImage.width, originalImage.height)
+    pygame.display.update(rect)
 
+
+def draw_pixel_list(pixel_list, pixel_color, top_left):
+    global surface
+    left = top_left[0]
+    top = top_left[1]
+    pygame.display.get_surface()
+    for item in pixel_list:
+        x = item[0] + left
+        y = item[1] + top
+        surface.set_at((x, y), pixel_color)
+
+
+def draw_list_in_image(image, pixel_list, pixel_color):
+    for item in pixel_list:
+        x = item[0]
+        y = item[1]
+        image.data[y][x] = pixel_color
+    return
 
 #
 #   View
@@ -2016,7 +2156,7 @@ def apply_hysteresis(data, width, height):
 
 
 def is_connected_to_border_pixel(data, width, height, x, y):
-    for y1 in range (3):
+    for y1 in range(3):
         for x1 in range(3):
             x2 = x + 1 - x1
             y2 = y + 1 - y1
@@ -2575,11 +2715,514 @@ def apply_thresholding_by_range(matrix, width, height, thresholding):
 
 
 #
+#   Active Borders / Pixel Exchange
+#
+def pixel_exchange_end(iterations, iteration_count, image, l_in, l_out, object_value, tolerance):
+    if iteration_count >= iterations:
+        return True
+
+    data = image.data
+    for i in range(len(l_in)):
+        item = l_in[i]
+        pixel = data[item[1]][item[0]]
+        f = pixel_exchange_test_function(object_value, pixel, tolerance)
+        if f < 0:
+            return False
+
+    for j in range(len(l_out)):
+        item = l_out[j]
+        pixel = data[item[1]][item[0]]
+        f = pixel_exchange_test_function(object_value, pixel, tolerance)
+        if f > 0:
+            return False
+    return True
+
+
+def update_pixel_exchange(l_out, l_in, pixel_map, pixel_avg, iterations, tolerance, image_selected):
+    iteration_count = 0
+    while not pixel_exchange_end(iterations, iteration_count, image_selected, l_in, l_out, pixel_avg, tolerance):
+        iteration_count = iteration_count + 1
+        l_in, l_out, pixel_map = make_pixel_exchange_iteration(l_out, l_in, image_selected, pixel_map, pixel_avg,
+                                                               tolerance)
+
+    return l_in, l_out, pixel_map, pixel_avg
+
+
+def apply_pixel_exchange(iterations, tolerance, image_selected, new_selection):
+    # Step 1:
+    l_in, l_out, pixel_avg, pixel_map, l_other, l_obj = get_selection_pixel_exchange_lists(image_selected,
+                                                                                           new_selection)
+    iteration_count = 0
+
+    while not pixel_exchange_end(iterations, iteration_count, image_selected, l_in, l_out, pixel_avg, tolerance):
+        iteration_count = iteration_count + 1
+        l_in, l_out, pixel_map = make_pixel_exchange_iteration(l_out, l_in, image_selected, pixel_map, pixel_avg,
+                                                               tolerance)
+
+    return l_in, l_out, pixel_map, pixel_avg
+
+
+def print_lists_len(l_out, l_in):
+    print("L_out len: " + len(l_out).__str__())
+    print("L_in len: " + len(l_in).__str__())
+
+
+def make_pixel_exchange_iteration(l_out, l_in, image, pixel_map, pixel_avg, tolerance):
+    data = image.data
+    width = image.width
+    height = image.height
+
+    # Step 2
+    temp_0 = []
+    for i_0 in range(len(l_out)):
+        item = l_out[i_0]
+        x = item[0]
+        y = item[1]
+        pixel = data[y][x]
+        f = pixel_exchange_test_function(pixel_avg, pixel, tolerance)
+        if f > 0:
+            temp_0.append(i_0)
+
+    l_out, l_in, pixel_map = level_set_switch_in(temp_0, l_out, l_in, pixel_map, width, height)
+
+    # Step 3
+    temp_1 = []
+    for i_2 in range(len(l_in)):
+        item = l_in[i_2]
+        x = item[0]
+        y = item[1]
+        if is_inside_object(x, y, width, height, pixel_map):
+            temp_1.append(i_2)
+
+    deleted_1 = 0
+    for temp_item in temp_1:
+        item = l_in.pop(temp_item - deleted_1)
+        deleted_1 = deleted_1 + 1
+        pixel_map[item[1]][item[0]] = -3
+
+    # Step 4
+    temp_2 = []
+    for i_4 in range(len(l_in)):
+        item = l_in[i_4]
+        x = item[0]
+        y = item[1]
+        pixel = data[y][x]
+        f = pixel_exchange_test_function(pixel_avg, pixel, tolerance)
+        if f < 0:
+            temp_2.append(i_4)
+
+    l_in, l_out, pixel_map = level_set_switch_out(temp_2, l_in, l_out, pixel_map, width, height)
+
+    # Step 5
+    temp_3 = []
+    for i_6 in range(len(l_out)):
+        item = l_out[i_6]
+        x = item[0]
+        y = item[1]
+        if is_outside_object(x, y, width, height, pixel_map):
+            temp_3.append(i_6)
+
+    deleted_3 = 0
+    for temp_item in temp_3:
+        item = l_out.pop(temp_item - deleted_3)
+        deleted_3 = deleted_3 + 1
+        pixel_map[item[1]][item[0]] = 3
+
+    return l_in, l_out, pixel_map
+
+
+def level_set_switch_in(index_list, l_out, l_in, pixel_map, width, height):
+    return level_set_switch(index_list, l_out, l_in, pixel_map, width, height, -1)
+
+
+def level_set_switch_out(index_list, l_in, l_out, pixel_map, width, height):
+    return level_set_switch(index_list, l_in, l_out, pixel_map, width, height, 1)
+
+
+def level_set_switch(index_list, list_to_pop, list_to_append, pixel_map, width, height, pixel_map_new_value):
+    deleted = 0
+    for list_item in index_list:
+        item = list_to_pop.pop(list_item - deleted)
+        deleted = deleted + 1
+        list_to_append.append(item)
+        pixel_map[item[1]][item[0]] = pixel_map_new_value
+        pixel_map, list_to_pop = replace_list_neighbor(item[0], item[1], width, height, pixel_map, list_to_pop,
+                                                       pixel_map_new_value * -1)
+
+    return list_to_pop, list_to_append, pixel_map
+
+
+def is_inside_object(x, y, width, height, pixel_map):
+    for i in range(3):
+        for j in range(3):
+            d_x = 1 - j
+            d_y = 1 - i
+            if not (int(abs(d_x)) == int(abs(d_y))):
+                new_x = x + d_x
+                new_y = y + d_y
+                if 0 <= new_x < width and 0 <= new_y < height:
+                    if pixel_map[new_y][new_x] == 1 or pixel_map[new_y][new_x] == 3:
+                        return False
+    return True
+
+
+def is_outside_object(x, y, width, height, pixel_map):
+    for i in range(3):
+        for j in range(3):
+            d_x = 1 - j
+            d_y = 1 - i
+            if not (int(abs(d_x)) == int(abs(d_y))):
+                new_x = x + d_x
+                new_y = y + d_y
+                if 0 <= new_x < width and 0 <= new_y < height:
+                    if pixel_map[new_y][new_x] == (-1) or pixel_map[new_y][new_x] == (-3):
+                        return False
+    return True
+
+
+def has_neighbor_with_value(x, y, width, height, pixel_map, value):
+    for i in range(3):
+        for j in range(3):
+            d_x = 1 - j
+            d_y = 1 - i
+            if not (int(abs(d_x)) == int(abs(d_y))):
+                new_x = x + d_x
+                new_y = y + d_y
+                if 0 <= new_x < width and 0 <= new_y < height:
+                    if pixel_map[new_y][new_x] == value or pixel_map[new_y][new_x] == 3 * value:
+                        return True
+    return False
+
+
+def replace_list_neighbor(x, y, width, height, pixel_map, list_1, sign):
+    for i in range(3):
+        for j in range(3):
+            d_x = 1 - j
+            d_y = 1 - i
+            if not (abs(d_x) == abs(d_y)):
+                new_x = x + d_x
+                new_y = y + d_y
+                if 0 <= new_x < width and 0 <= new_y < height:
+                    if pixel_map[new_y][new_x] == (3 * sign):
+                        list_1.append([new_x, new_y])
+                        pixel_map[new_y][new_x] = int(1 * sign)
+    return pixel_map, list_1
+
+
+def replace_l_out_neighbor(x, y, width, height, pixel_map, l_out):
+    return replace_list_neighbor(x, y, width, height, pixel_map, l_out, 1)
+
+
+def replace_l_in_neighbor(x, y, width, height, pixel_map, l_in):
+    return replace_list_neighbor(x, y, width, height, pixel_map, l_in, -1)
+
+
+def pixel_exchange_test_function(object_value, pixel_value, tolerance):
+    # tolerance is a number between 1 and 100
+    # with 1 tolernce has
+    new_tolerance = round(tolerance / 100, 2)
+    f = 0
+    dif_r = object_value[0] - pixel_value[0]
+    dif_g = object_value[1] - pixel_value[1]
+    dif_b = object_value[2] - pixel_value[2]
+    # mod_1 = dif_r + dif_g + dif_b
+    mod_2 = math.sqrt(pow(dif_r, 2) + pow(dif_g, 2) + pow(dif_b, 2))
+
+    return new_tolerance - mod_2 / (256 * math.sqrt(3))
+
+
+def get_selection_pixel_exchange_lists(image_selected, selection_obj):
+    l_in = []
+    l_out = []
+    l_obj = []
+    l_other = []
+    pixel_avg = [0, 0, 0]
+    pixel_map = []
+    pixel_count = 0
+    top = selection_obj.get_top_left()[1] - image_selected.top_left[1]
+    left = selection_obj.get_top_left()[0] - image_selected.top_left[0]
+
+    if not (0 <= top < top + selection_obj.get_height() - 1 < image_selected.height):
+        print("Top error")
+        return
+    if not (0 <= left < left + selection_obj.get_width() - 1 < image_selected.width):
+        print("Left Error")
+        return
+
+    image_data = image_selected.data
+
+    for y in range(image_selected.height):
+        row = []
+        for x in range(image_selected.width):
+            if left <= x < left + selection_obj.get_width() and top <= y < top + selection_obj.get_height():
+                if x == left or x == left + selection_obj.get_width() - 1:
+                    if y == top or y == top + selection_obj.get_height() - 1:
+                        row.append(3)
+                        l_other.append([x, y])
+                    else:
+                        row.append(1)
+                        l_out.append([x, y])
+                else:
+                    if y == top or y == top + selection_obj.get_height() - 1:
+                        row.append(1)
+                        l_out.append([x, y])
+                    else:
+                        pixel_count = pixel_count + 1
+                        pixel_avg[0] = pixel_avg[0] + image_data[y][x][0]
+                        pixel_avg[1] = pixel_avg[1] + image_data[y][x][1]
+                        pixel_avg[2] = pixel_avg[2] + image_data[y][x][2]
+                        if y == top + 1 or y == top + selection_obj.get_height() - 2 or \
+                                x == left + 1 or x == left + selection_obj.get_width() - 2:
+                            row.append(-1)
+                            l_in.append([x, y])
+                        else:
+                            row.append(-3)
+                            l_obj.append([x, y])
+            else:
+                row.append(3)
+                l_other.append([x, y])
+        pixel_map.append(row)
+    pixel_avg[0] = round(pixel_avg[0] / pixel_count, 2)
+    pixel_avg[1] = round(pixel_avg[1] / pixel_count, 2)
+    pixel_avg[2] = round(pixel_avg[2] / pixel_count, 2)
+
+    return l_in, l_out, pixel_avg, pixel_map, l_obj, l_other
+
+
+def get_image_and_selection():
+    global new_selection
+    img_id = -1
+    for i in range(len(images)):
+        image = get_image_by_id(i)
+        if image.collidepoint(new_selection.new_x, new_selection.new_y):
+            img_id = image.id
+
+    if img_id == -1:
+        print("No image selected")
+        return False, None, new_selection
+    image_selected = get_image_by_id(img_id)
+
+    return True, image_selected, new_selection
+
+
+def pixel_exchange_window():
+    PixelExchangeWindow()
+    return
+
+
+class PixelExchangeWindow:
+    def __init__(self):
+        self.window = Tk()
+        self.window.focus_set()
+        self.window.title("Pixel Exchange Algoritm")
+        self.window.geometry("260x180")
+
+        self.l_in = []
+        self.l_out = []
+        self.pixel_map = []
+        self.pixel_avg = []
+
+        pixel_tolerance = 1
+        iteration_info = 2
+        apply_algoritm = 3
+        next_image = 4
+        update_curve = 5
+        run_as_video = 6
+        run_as_video_2 = 7
+
+        colspan = 3
+        padx = 8
+        pady = 2
+
+        Label(self.window, text="Iteration count: ").grid(row=iteration_info, column=0)
+        self.iteration_count = StringVar()
+        self.txtIterationCount = Entry(self.window, textvariable=self.iteration_count)
+        self.txtIterationCount.grid(row=iteration_info, column=1, padx=padx, pady=pady, columnspan=colspan)
+
+        Label(self.window, text="Pixel tolerance: ").grid(row=pixel_tolerance, column=0)
+        self.sclTolerance = Scale(self.window, from_=1, to=100, resolution=1, orient=HORIZONTAL, length=100)
+        self.sclTolerance.grid(row=pixel_tolerance, column=1, padx=padx, pady=pady)
+        self.sclTolerance.set(10)
+
+        Label(self.window, text="Pixel exchange").grid(row=apply_algoritm, column=0)
+        self.btnPixelExchange = Button(self.window, text="Apply pixel exchange", command=self.pixel_exchange_wrapper)
+        self.btnPixelExchange.grid(row=apply_algoritm, column=1, padx=padx, pady=pady, columnspan=colspan)
+
+        Label(self.window, text="Change Image").grid(row=next_image, column=0)
+        self.btnLoadImage = Button(self.window, text="Load next Image", command=self.load_next_image_wrapper)
+        self.btnLoadImage.grid(row=next_image, column=1, padx=padx, pady=pady, columnspan=colspan)
+
+        Label(self.window, text="Update Curve").grid(row=update_curve, column=0)
+        self.btnUpdateCurve = Button(self.window, text="Update", command=self.update_curve_wrapper)
+        self.btnUpdateCurve.grid(row=update_curve, column=1, padx=padx, pady=pady, columnspan=colspan)
+
+        Label(self.window, text="Video Run").grid(row=run_as_video, column=0)
+        self.btnRunVideo = Button(self.window, text="Run as video", command=self.run_as_video_wrapper)
+        self.btnRunVideo.grid(row=run_as_video, column=1, padx=padx, pady=pady, columnspan=colspan)
+
+        Label(self.window, text="Try Video ").grid(row=run_as_video_2, column=0)
+        self.btnRunVideo = Button(self.window, text="Run as video 2", command=self.run_as_video_2_wrapper)
+        self.btnRunVideo.grid(row=run_as_video_2, column=1, padx=padx, pady=pady, columnspan=colspan)
+
+    def pixel_exchange_wrapper(self):
+        iterations = int(self.txtIterationCount.get())
+        pixel_tolerance = int(self.sclTolerance.get())
+
+        exists_image, image_selected, new_selection_2 = get_image_and_selection()
+        if exists_image:
+            l_in, l_out, pixel_map, pixel_avg = apply_pixel_exchange(iterations, pixel_tolerance,
+                                                                     image_selected, new_selection_2)
+
+            self.l_in = l_in
+            self.l_out = l_out
+            self.pixel_map = pixel_map
+            self.pixel_avg = pixel_avg
+
+            draw_ati_image(editableImage)
+            red = [255, 0, 0]
+            blue = [0, 0, 255]
+            draw_pixel_list(l_in, red, editableImage.top_left)
+            draw_pixel_list(l_out, blue, editableImage.top_left)
+        return
+
+    def run_as_video_wrapper(self):
+        if len(self.l_in) == 0 and len(self.l_out) == 0:
+            iter_str = self.txtIterationCount.get()
+            tolerance = int(self.sclTolerance.get())
+            if len(iter_str) == 0:
+                print("No Iteration selected")
+                return
+            iterations = int(iter_str)
+            exists_image, image_selected, new_selection_2 = get_image_and_selection()
+            if exists_image:
+                l_in, l_out, pixel_map, pixel_avg = apply_pixel_exchange(iterations, tolerance, image_selected,
+                                                                         new_selection_2)
+                self.l_in = l_in
+                self.l_out = l_out
+                self.pixel_map = pixel_map
+                self.pixel_avg = pixel_avg
+            else:
+                return
+
+        filename = editableImage.filename
+        has_next, next_filename = has_next_file(filename)
+        if not has_next:
+            print("Not exists next")
+            return
+
+        while has_next:
+            load_jpg(next_filename)
+            self.update_curve_wrapper()
+            has_next, next_filename = has_next_file(next_filename)
+
+        # print("Not implemented")
+        return
+
+    def run_as_video_2_wrapper(self):
+        red = [255, 0, 0]
+        blue = [0, 0, 255]
+
+        if len(self.l_in) == 0 and len(self.l_out) == 0:
+            iter_str = self.txtIterationCount.get()
+            tolerance = int(self.sclTolerance.get())
+            if len(iter_str) == 0:
+                print("No Iteration selected")
+                return
+            iterations = int(iter_str)
+            exists_image, image_selected, new_selection_2 = get_image_and_selection()
+            if exists_image:
+                l_in, l_out, pixel_map, pixel_avg = apply_pixel_exchange(iterations, tolerance, image_selected,
+                                                                         new_selection_2)
+                self.l_in = l_in
+                self.l_out = l_out
+                self.pixel_map = pixel_map
+                self.pixel_avg = pixel_avg
+                draw_pixel_list(l_in, red, editableImage.top_left)
+                draw_pixel_list(l_out, blue, editableImage.top_left)
+            else:
+                return
+
+        # Hasta aca tengo las listas.
+        images_array = get_jpg_array(editableImage.filename)
+        rect = pygame.Rect(editableImage.top_left[0], editableImage.top_left[1], editableImage.width,
+                           editableImage.height)
+        time_sum = 0
+        time_count = 0
+        for item in images_array:
+            t_0 = time.time()
+            l_in, l_out, pixel_map, pixel_avg = update_pixel_exchange(self.l_out, self.l_in, self.pixel_map,
+                                                                      self.pixel_avg, iterations, tolerance,
+                                                                      item)
+            t_1 = time.time()
+            time_sum = time_sum + t_1 - t_0
+            time_count = time_count + 1
+            draw_list_in_image(item, l_in, red)
+            draw_list_in_image(item, l_out, blue)
+
+        for item in images_array:
+            draw_ati_image(item)
+            pygame.display.update(rect)
+        print(time_sum / time_count)
+        return
+
+    def update_curve_wrapper(self):
+        iterations = int(self.txtIterationCount.get())
+        tolerance = int(self.sclTolerance.get())
+
+        exists_image, image_selected, new_selection_2 = get_image_and_selection()
+        if exists_image:
+            l_in, l_out, pixel_map, pixel_avg = update_pixel_exchange(self.l_out, self.l_in, self.pixel_map,
+                                                                      self.pixel_avg, iterations, tolerance,
+                                                                      image_selected)
+            self.l_in = l_in
+            self.l_out = l_out
+            self.pixel_map = pixel_map
+            self.pixel_avg = pixel_avg
+        else:
+            return
+
+        red = [255, 0, 0]
+        blue = [0, 0, 255]
+
+        draw_list_in_image(editableImage, l_in, red)
+        draw_list_in_image(editableImage, l_out, blue)
+        rect = pygame.Rect(editableImage.top_left[0], editableImage.top_left[1], editableImage.width,
+                           editableImage.height)
+        draw_ati_image(editableImage)
+        pygame.display.update(rect)
+        return
+
+    def load_next_image_wrapper(self):
+        filename = editableImage.filename
+        if filename == '':
+            print("There is no next image")
+            return
+        has_next, next_filename = has_next_file(editableImage.filename)
+
+        if not has_next:
+            print("Not exists next")
+            return
+
+        load_jpg(next_filename)
+        draw_ati_image(editableImage)
+        # Note: Hay que actaulizar ambas listas:
+
+        if len(self.l_in) == 0 or len(self.l_out) == 0:
+            print("No list found")
+            return
+
+        red = [255, 0, 0]
+        blue = [0, 0, 255]
+        draw_pixel_list(self.l_in, red, editableImage.top_left)
+        draw_pixel_list(self.l_out, blue, editableImage.top_left)
+
+
+#
 #   Getters
 #
 
 def get_image_by_id(image_id):
-    if image_id == 0:
+    if image_id == 0 or image_id == 2:
         return editableImage
     elif image_id == 1:
         return originalImage
@@ -2600,10 +3243,12 @@ def is_click_in_images(pos):
 
 def update_selection_values(selection):
     image_id = -1
+    # print(len(images))
     for i in range(len(images)):
         image = get_image_by_id(i)
         if image.collidepoint(selection.new_x, selection.new_y):
             image_id = image.id
+    # print(image_id)
     if image_id != -1:
         image_selected = get_image_by_id(image_id)
         selected_data = image_data_in_selection(image_selected)
@@ -2618,6 +3263,8 @@ def update_selection_values(selection):
                 .get_green_average_display(selected_data)
             app.blue_pixel_average["text"] = image_selected \
                 .get_blue_average_display(selected_data)
+    else:
+        print("No image selected. Image_id = -1")
     return
 
 
@@ -2800,10 +3447,19 @@ def main():
 
     done = False
     while not done:
+        x, y, width, height = 0, 0, 0, 0
+        if editableImage != None:
+            tl = editableImage.top_left
+            width = editableImage.width
+            height = editableImage.height
+            if tl != None:
+                x = tl[0]
+                y = tl[1]
+        rect = pygame.Rect(x, y, width, height)
         app.update()
         if get_input():
             done = True
-        pygame.display.flip()
+        pygame.display.update(rect)
 
 
 root = Tk()
@@ -2811,6 +3467,7 @@ pygame.init()
 ScreenSize = (1, 1)
 surface = pygame.display.set_mode(ScreenSize)
 images = []
+pygame.event.set_allowed([MOUSEMOTION, MOUSEBUTTONUP, MOUSEBUTTONDOWN, QUIT])
 # list of images, in case we need to be more flexible than just one editable
 # and one original image, possible to add more.
 app = Window(root)
