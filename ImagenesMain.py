@@ -55,6 +55,7 @@ class Window(Frame):
         self.edit_submenu.add_command(label="Border detection (Sobel)", command=lambda: edge_enhance(1, "sobel"))
         self.edit_submenu.add_command(label="Border detection (Prewitt)", command=lambda: edge_enhance(1, "prewitt"))
         self.edit_submenu.add_command(label="Susan", command=Susan_window)
+        self.edit_submenu.add_command(label="Hough", command=hough_line)
 
         self.menu.add_cascade(label="Edit", menu=self.edit_menu)
 
@@ -174,6 +175,51 @@ class Window(Frame):
 #
 #   Filters
 #
+
+
+def hough_line(vote_thresh, theta_step=1, rho_step=1):
+    # Rho and Theta ranges
+    img = np.array(editableImage.data)
+    width, height = img.shape
+    diag_len = int(np.ceil(np.sqrt(width ** 2 + height ** 2)))  # max_dist
+    rhos = np.linspace(-diag_len, diag_len, int((diag_len * 2/rho_step) + 1))
+    # Save some values
+    cos_t = np.cos(thetas)
+    sin_t = np.sin(thetas)
+    num_thetas = len(thetas)
+
+    # Hough accumulator array
+    accumulator = np.zeros((2 * diag_len, num_thetas), dtype=np.uint64)
+    y_indices, x_indices = np.nonzero(img)  # (row, col) indices for borders
+    lines = []
+    # Vote in the hough accumulator
+    for i in range(len(x_indices)):
+        x = x_indices[i]
+        y = y_indices[i]
+        for t_idx in range(num_thetas):
+            # Calculate rho. diag_len is added for a positive index
+            rho = int(round(x * cos_t[t_idx] + y * sin_t[t_idx])) + diag_len
+            accumulator[rho, t_idx] += 1
+
+    # add to lines if it has more than vote_thresh votes
+    for rho in range(len(accumulator)):
+        for theta in range(len(accumulator[0])):
+            if accumulator[rho][theta] >= vote_thresh:
+                lines.append([rho * rho_step - diag_len, theta * theta_step])
+    # convert thetas back to radians
+    for i in range(len(lines)):
+        lines[i][1] -= 90
+        lines[i][1] = lines[i][1] * np.pi/180
+
+    # iterate through pixels in image. If the (x, y) point satisfies Hough transform function, mark as line (set to 1).
+    fin_lines = np.zeros(img.shape)
+    for y in range(len(img)):
+        for x in range(len(img[0])):
+            for rho, theta in lines:
+                eq = int(round(x * np.cos(theta) + y * np.sin(theta)))
+                if eq == rho:
+                    editableImage.set_at((x, y), (255, 0, 0))
+    return fin_lines
 
 
 class Susan_window:
