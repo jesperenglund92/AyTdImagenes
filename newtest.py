@@ -9,7 +9,7 @@ def hough_circles(img, threshold, region, radii=None):
   else:
     r_max, r_min = np.max(radii), np.min(radii)
 
-  R = r_max - r_min
+  R = r_max - r_min # number of radii to check
   # Initializing accumulator array.
   # Accumulator array is a 3 dimensional array with the dimensions representing
   # the radius, X coordinate and Y coordinate resectively.
@@ -18,14 +18,14 @@ def hough_circles(img, threshold, region, radii=None):
   B = np.zeros((r_max, rows + 2 * r_max, cols + 2 * r_max))
 
   # Precomputing all angles to increase the speed of the algorithm
-  theta = np.arange(0, 360) * np.pi / 180
+  thetas = np.arange(0, 360) * np.pi / 180
   edges = np.argwhere(img[:, :])  # Extract all edge coordinates, argwhere finds indices of elements that are non-zero
   for val in range(R):
     r = r_min + val
     # Creating a Circle Blueprint
-    bprint = np.zeros((2 * (r + 1), 2 * (r + 1)))
+    bprint = np.zeros((2 * r + 1, 2 * r + 1))
     m, n = r + 1, r + 1  # Finding out the center of the blueprint
-    for angle in theta:
+    for angle in thetas:
       x = int(np.round(r * np.cos(angle)))
       y = int(np.round(r * np.sin(angle)))
       bprint[m + x, n + y] = 1
@@ -59,7 +59,8 @@ def create_bin_circle_edges(size, radius):
         image[y][x] = 1
   return image
 
-circle = create_bin_circle_edges(21, 5)
+circle = create_bin_circle_edges(11, 3)
+print(circle)
 hough = hough_circles(circle, 3, 15, radii=5)
 for i in hough:
   print(i)
