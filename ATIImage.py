@@ -4,7 +4,7 @@ from classes import *
 
 class ATIImage(object):
     def __init__(self, data=None, width=0, height=0, image_type=0, top_left=None, active=False, editable=False,
-                 values_set=False):
+                 values_set=False, filename=''):
         if data is None:
             data = []
         self.data = data
@@ -21,6 +21,7 @@ class ATIImage(object):
         self.max_gray_level = None
         self.id = None
         self.set_restore_image()
+        self.filename = filename
 
     #
     #   Getters
