@@ -76,6 +76,7 @@ class Window(Frame):
         self.effect_menu.add_command(label="Bilateral Filter", command=bilateral_window)
         self.effect_menu.add_command(label="Canny Algoritm", command=canny_window)
         self.effect_menu.add_command(label="Pixel Exchange", command=pixel_exchange_window)
+        self.effect_menu.add_command(label="Harris Method", command=harris_method_window)
         self.menu.add_cascade(label="Effects", menu=self.effect_menu)
 
         Label(master, text="x: ").grid(row=0, column=0)
@@ -472,7 +473,6 @@ def filter_image_gauss(size, sigma):
         redraw_img(fin_img, False)
     else:
         redraw_img(fin_img, True)
-
 
 def filter_image_mdnp():
     if editableImage.image_type == "ppm":
@@ -929,13 +929,14 @@ def load_ppm(file):
     editableImage.max_gray_level = max_val
     editableImage.set_restore_image()
     editableImage.values_set = True
+    editableImage.id = 0
 
     originalImage = editableImage.get_copy()
     originalImage.editable = False
     originalImage.id = 1
     originalImage.values_set = True
-    originalImage.image_type = ".ppm"
 
+    originalImage.image_type = ".ppm"
     app.enable_image_menu()
 
 
@@ -1674,6 +1675,15 @@ def draw_ati_image(image):
             # if surface.get_at((x + image.top_left[0], y + image.top_left[1])) != image.get_at([x, y]):
             surface.set_at((x + image.top_left[0], y + image.top_left[1]), image.get_at([x, y]))
 
+
+def draw_pixel_borders(borders, width, height, top_left, pixel_color):
+    global surface
+    pygame.display.get_surface()
+    for x in range(0, width):
+        for y in range(0, height):
+            if borders[y][x] == 255:
+                surface.set_at((x + top_left[0], y + top_left[1]), pixel_color)
+    pygame.display.flip()
 
 def draw_images():
     global editableImage
@@ -3423,6 +3433,161 @@ class PixelExchangeWindow:
         blue = [0, 0, 255]
         draw_pixel_list(self.l_in, red, editableImage.top_left)
         draw_pixel_list(self.l_out, blue, editableImage.top_left)
+
+#
+#   Harris method
+#
+
+def harris_method_window():
+    HarrisMethodWindow()
+
+
+class HarrisMethodWindow:
+    def __init__(self):
+        self.window = Tk()
+        self.window.focus_set()
+        self.window.title("Harris method")
+        self.window.geometry("260x180")
+
+        harrisMethodRow = 0
+        labelColumn = 0
+        Label(self.window, text="Harris Method").grid(row=harrisMethodRow, column=labelColumn)
+        self.btnRunMethod = Button(self.window, text="Run Method", command=self.wrapper)
+        self.btnRunMethod.grid(row=harrisMethodRow, column=1)
+
+    def wrapper(self):
+        k = 0.04
+        mask = 7
+        sigma = 2
+        average = 0.1
+        # exits_image, image_seleted, new_selection_2 = get_image_and_selection()
+        harris_method(editableImage, k, mask, sigma, average)
+
+
+def harris_method(my_image, k, mask_size, sigma, average):
+    my_image = editableImage
+    data = my_image.data
+    width = my_image.width
+    height = my_image.height
+    #if my_image.image_type == "ppm":
+    #    data = to_grey_scale(data, width, height)
+
+    #Step 1: Get Ix, Iy
+    image = np.array(data)
+    # Prewit Matrix
+    h_x = np.array([[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]])
+    h_y = np.array([[-1, -1, -1], [0, 0, 0], [1, 1, 1]])
+    size = 3
+    pad = int((size - 1) / 2)
+    for i in range(1):
+        img = image[:, :, i]
+        g_x = convolve_func(img, h_x, pad, size)
+        g_y = convolve_func(img, h_y, pad, size)
+        if i < 1:
+            image_x = g_x
+            image_y = g_y
+        else:
+            image_x = np.dstack((image_x, g_x))
+            image_y = np.dstack((image_y, g_y))
+
+    shape = image.shape
+    image_x = reshape_images(image_x, shape)
+    image_y = reshape_images(image_y, shape)
+
+    image_x2 = multiply_images_point_to_point(image_x, image_x, width, height)
+    image_x2 = apply_gauss_filter(image_x2, mask_size, sigma)
+
+    image_y2 = multiply_images_point_to_point(image_y, image_y, width, height)
+    image_y2 = apply_gauss_filter(image_y2, mask_size, sigma)
+
+    image_xy = multiply_images_point_to_point(image_x, image_y, width, height)
+    image_xy = apply_gauss_filter(image_xy, mask_size, sigma)
+
+    r_matrix = calculate_harris_function(image_x2, image_y2, image_xy, width, height, k)
+    a = threshold_matrix_average(r_matrix, width, height, average)
+
+    draw_pixel_borders(a, width, height, my_image.top_left, [0, 0, 255])
+    return
+
+
+def multiply_images_point_to_point(img1, img2, width, height):
+    new_matrix = []
+    for y in range(height):
+        row = []
+        for x in range(width):
+            val = img1[y][x][0] * img2[y][x][0]
+            pixel_color = [val, val, val]
+            row.append(pixel_color)
+        new_matrix.append(row)
+    return new_matrix
+
+
+def apply_gauss_filter(image_data, size, sigma):
+    colors = 1
+
+    image = np.array(image_data)
+    size = int(size)
+    sigma = float(sigma)
+    n_size = (size - 1) / 2
+    pad = int((size - 1) / 2)
+    x, y = np.mgrid[-n_size:n_size + 1, -n_size:n_size + 1]
+    k = 1 / (2 * math.pi * sigma ** 2)
+    gauss_kernel = k * np.exp(-(x ** 2 + y ** 2) / (2 * sigma ** 2))
+    mask = gauss_kernel / np.sum(gauss_kernel)
+    fin_img = None
+    for i in range(1):
+        img = image[:, :, i]
+        gauss_img = convolve_func(img, mask, pad, size)
+        if i < 1:
+            fin_img = gauss_img
+        else:
+            fin_img = np.dstack((fin_img, gauss_img))
+    #redraw_img(fin_img, False)
+
+    img = np.array(image_data)
+    fin_img = reshape_images(fin_img, img.shape)
+    return fin_img
+
+
+def calculate_harris_function(img_x2, img_y2, img_xy, width, height, k):
+    new_matrix = []
+    for y in range(height):
+        row = []
+        for x in range(width):
+            x2 = img_x2[y][x][0]
+            y2 = img_y2[y][x][0]
+            xy = img_xy[y][x][0]
+            r = round((x2 * y2 - xy * xy) - k * math.pow(x2 + y2, 2))
+            row.append(r)
+        new_matrix.append(row)
+    return new_matrix
+
+
+def threshold_matrix_average(matrix, width, height, average):
+    max_value = matrix[0][0]
+    for y in range(height):
+        for x in range(width):
+            if matrix[y][x] > max_value:
+                max_value = matrix[y][x]
+    max_value = 10
+    new_matrix = []
+    for y2 in range(height):
+        row = []
+        for x2 in range(width):
+            if matrix[y2][x2] < max_value:
+                row.append(0)
+            else:
+                row.append(255)
+        new_matrix.append(row)
+    return new_matrix
+
+
+def set_borders_in_image(image_data, width, height, border):
+    for y in range(height):
+        for x in range(width):
+            if border[y][x][0] == 255:
+                image_data[y][x] = [0, 0, 255]
+    return image_data
 
 
 #
