@@ -157,6 +157,8 @@ def hough_circle(img, thresh, radii):
             X = [x - a + r, x + a + r - 1]  # extreme X values
             Y = [y - b + r, y + b + r - 1]  # extreme Y values
             accumulator[r - 1, X[0]:X[1], Y[0]:Y[1]] += blueprint
+            print(accumulator[r - 1, X[0]:X[1], Y[0]:Y[1]].shape)
+            print(blueprint.shape)
 
         accumulator[r - 1][accumulator[r - 1] < num_points * thresh / r] = 0
         resized_acc = accumulator[:, r:-r, r:-r]

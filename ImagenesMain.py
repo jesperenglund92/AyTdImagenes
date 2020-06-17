@@ -205,22 +205,23 @@ class Hough_window:
         Button(window, text="Apply", command=self.apply_hough).grid(row=0, column=2)
 
     def apply_hough(self):
-        if self.lines_or_circles == 1:
-            hough_line(self.threshold.get())
+        if self.lines_or_circles.get() == 1:
+            hough_line(int(self.threshold.get()))
         else:
             if self.max_radius.get() == '' or self.min_radius.get() == '':
-                hough_circle(self.threshold.get())
+                hough_circle(int(self.threshold.get()))
             else:
                 r_max = int(self.max_radius.get())
                 r_min = int(self.min_radius.get())
                 hough_circle(int(self.threshold.get()), (r_max, r_min))
 
 
-def hough_line(vote_thresh=50, theta_step=1, rho_step=1):
+def hough_line(vote_thresh=50, theta_step=2, rho_step=1):
     # Rho and Theta ranges
-    img = np.array(editableImage.data)
+    img = np.array(editableImage.data)[:, :, 0]
+    fin_img = np.array(editableImage.data)
     thetas = np.deg2rad(np.arange(-90.0, 90.0, theta_step))
-    width, height = img[:, :, 0].shape
+    width, height = img.shape
     diag_len = int(np.ceil(np.sqrt(width ** 2 + height ** 2)))  # max_dist
     rhos = np.linspace(-diag_len, diag_len, int((diag_len * 2/rho_step) + 1))
     # Save some values
@@ -258,14 +259,17 @@ def hough_line(vote_thresh=50, theta_step=1, rho_step=1):
             for rho, theta in lines:
                 eq = int(round(x * np.cos(theta) + y * np.sin(theta)))
                 if eq == rho:
-                    editableImage.set_at((x, y), (255, 0, 0))
+                    fin_img[y, x] = 255, 0, 0
+    redraw_img(fin_img, True)
     return fin_lines
 
 
 def hough_circle(thresh, radii=None):
-    img = np.array(editableImage.data)
+    print("hello")
+    img = np.array(editableImage.data)[:, :, 0]
+    fin_img = np.array(editableImage.data)
     # Rho and Theta ranges
-    height, width = img[:, :, 0].shape
+    height, width = img.shape
     if radii == None:
         r_max = np.max((height, width))
         r_min = 3
@@ -285,7 +289,7 @@ def hough_circle(thresh, radii=None):
         r = r_min + val
         # Hough accumulator array
         # accumulator representing r, X and Y respectively
-        accumulator = np.zeros((r, width + 2 * r, height + 2 * r))
+        accumulator = np.zeros((r, width + r * 2, height + r * 2))
         #Create circle blueprint
         blueprint = np.zeros((2 * r + 1, 2 * r + 1))
         a, b = r + 1, r + 1  # The center of the blueprint/mask
@@ -300,21 +304,24 @@ def hough_circle(thresh, radii=None):
         for i in range(len(x_indices)):
             x = x_indices[i]
             y = y_indices[i]
-            X = [x - a + r, x + a + r - 1]  # extreme X values
-            Y = [y - b + r, y + b + r - 1]  # extreme Y values
+            X = [x - a + r + 1, x + a + r]  # extreme X values
+            Y = [y - b + r + 1, y + b + r]  # extreme Y values
             accumulator[r - 1, X[0]:X[1], Y[0]:Y[1]] += blueprint
+            """if accumulator[r - 1, X[0]:X[1], Y[0]:Y[1]].shape[0] == 0:
+                print(X[0], X[1], x, a, b, r)"""
 
         accumulator[r - 1][accumulator[r - 1] < num_points * thresh / r] = 0
         resized_acc = accumulator[:, r:-r, r:-r]
         for r, a, b in np.argwhere(resized_acc):
             r += 1
-            a += 1
-            b += 1
+            #a += 1
+            #b += 1
             for y in range(len(img)):
                 for x in range(len(img[0])):
                     calc = np.sqrt((x - a) ** 2 + (y - b) ** 2)
                     if r - 0.5 < calc < r + 0.5:
-                        fin_circles[x, y] = 1
+                        fin_img[y, x] = 255, 0, 0
+    redraw_img(fin_img, True)
     return fin_circles
 
 
@@ -379,7 +386,7 @@ def convolve_susan(img, mask, pad, thresh_one, thresh_two, N):
             for i in range(mask.shape[1]):
                 for j in range(mask.shape[0]):
                     if mask[i][j] == 1:
-                        if abs(image_padded[y + i, x + j] - r_zero) < thresh_one:
+                        if abs(image_padded[y + i, x + j] - r_zero) <= thresh_one:
                             n += 1
             s = 1 - n/N
             if 0.5 - thresh_two < s < 0.5 + thresh_two:
@@ -2357,7 +2364,7 @@ def apply_hysteresis(data, width, height):
             if t1 <= value <= t2:
                 value = is_connected_to_border_pixel(new_data_1, width, height, x2, y2)
             if value < 0 or value > 255:
-                print(value)
+                pass
             row_2.append([value, value, value])
         new_data_2.append(row_2)
     return new_data_2
@@ -2442,7 +2449,7 @@ def map_canny_angle(angle):
     while angle < 0:
         angle = angle + 360
     if angle > 180:
-        print(angle.__str__())
+        pass
     if 0 <= angle < 22.5 or 157.5 <= angle < 202.5 or 337.5 <= angle <= 360:
         return 0
     if 22.5 <= angle < 67.5 or 202.5 <= angle < 247.5:
