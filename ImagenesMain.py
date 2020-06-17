@@ -10,6 +10,8 @@ from PIL import Image
 from os import path
 import re
 import time
+from cv2 import xfeatures2d as sift
+import cv2 as cv
 from pygame.locals import *
 
 
@@ -77,6 +79,7 @@ class Window(Frame):
         self.effect_menu.add_command(label="Canny Algoritm", command=canny_window)
         self.effect_menu.add_command(label="Pixel Exchange", command=pixel_exchange_window)
         self.effect_menu.add_command(label="Harris Method", command=harris_method_window)
+        self.effect_menu.add_command(label="Sift Detection", command=sift_window)
         self.menu.add_cascade(label="Effects", menu=self.effect_menu)
 
         Label(master, text="x: ").grid(row=0, column=0)
@@ -738,11 +741,13 @@ class NoiseWindow:
 #
 #   Open Files
 #
-dir = "/"
-def open_file():
-    global editableImage
-    global originalImage
-    global dir
+
+
+image_directory = "/"
+
+
+def open_filename ():
+    global image_directory
     file_types = [
         ('All files', '*'),
         ('RAW', '*.raw'),
@@ -753,6 +758,13 @@ def open_file():
     # dir = "/Users/JuanPablo/Documents/ITBA/ATI/Imagenes"
     filename = filedialog.askopenfilename(initialdir=dir,
                                           title="Select file", filetypes=file_types)
+    return filename
+
+
+def open_file():
+    global editableImage
+    global originalImage
+    filename = open_filename()
     if filename:
         file = open(filename, "rb")
         dir = path.dirname(filename)
@@ -3588,6 +3600,46 @@ def set_borders_in_image(image_data, width, height, border):
             if border[y][x][0] == 255:
                 image_data[y][x] = [0, 0, 255]
     return image_data
+
+
+#
+# SIFT Method
+#
+
+def sift_window():
+    SiftWindow()
+
+
+class SiftWindow:
+    def __init__(self):
+        self.window = Tk()
+        self.window.focus_set()
+        self.window.title("Harris method")
+        self.window.geometry("260x180")
+
+        siftMethodRow = 0
+        labelColumn = 0
+        Label(self.window, text="Sift method").grid(row=siftMethodRow, column=labelColumn)
+        self.btnRunMethod = Button(self.window, text="Detect", command=self.wrapper)
+        self.btnRunMethod.grid(row=siftMethodRow, column=1)
+
+    def wrapper(self):
+        # print("Not impleted")
+        sift_image_detection(editableImage)
+
+
+def sift_image_detection(my_image):
+    filename = open_filename()
+    img = cv.imread(filename)
+    cv.imshow('Color image', img)
+    gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+    sift_class = sift.SIFT_create()
+    kp = sift_class.detect(gray, None)
+    img = cv.drawKeypoints(gray, kp, img)
+    cv.imshow('Color image2', img)
+    #cv.imwrite('sift_keypoints.jpg', img)
+
+
 
 
 #
