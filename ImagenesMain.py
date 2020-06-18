@@ -10,7 +10,7 @@ from PIL import Image
 from os import path
 import re
 import time
-from cv2 import xfeatures2d as sift
+#from cv2 import xfeatures2d as sift
 import cv2 as cv
 from pygame.locals import *
 
@@ -3590,17 +3590,19 @@ def calculate_harris_function(img_x2, img_y2, img_xy, width, height, k):
     return new_matrix2
 
 def threshold_matrix_average(matrix, width, height, average):
-    max_value = matrix[0][0]
+    max = np.max(matrix)
+    thresh = 0.05 * max
+    """max_value = matrix[0][0]
     for y in range(height):
         for x in range(width):
             if matrix[y][x] > max_value:
                 max_value = matrix[y][x]
-    max_value = 10
+    max_value = 10"""
     new_matrix = []
     for y2 in range(height):
         row = []
         for x2 in range(width):
-            if matrix[y2][x2] < max_value:
+            if matrix[y2][x2] < thresh:
                 row.append(0)
             else:
                 row.append(255)
