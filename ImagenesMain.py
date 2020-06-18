@@ -3465,18 +3465,26 @@ class HarrisMethodWindow:
         labelColumn = 0
         Label(self.window, text="Harris Method").grid(row=harrisMethodRow, column=labelColumn)
         self.btnRunMethod = Button(self.window, text="Run Method", command=self.wrapper)
-        self.btnRunMethod.grid(row=harrisMethodRow, column=1)
+        Label(self.window, text="Sigma: ").grid(row=1, column=0)
+        self.sigma = Entry(self.window)
+        self.sigma.grid(row=1, column=1)
+        Label(self.window, text="Threshold: ").grid(row=2, column=0)
+        self.threshold = Entry(self.window)
+        self.threshold.grid(row=2, column=1)
+        self.btnRunMethod.grid(row=2, column=2)
 
     def wrapper(self):
         k = 0.04
         mask = 7
-        sigma = 2
+        sigma = float(self.sigma.get())
+        print(sigma)
         average = 0.1
+        threshold = float(self.threshold.get())
         # exits_image, image_seleted, new_selection_2 = get_image_and_selection()
-        harris_method(editableImage, k, mask, sigma, average)
+        harris_method(editableImage, k, mask, sigma, average, threshold)
 
 
-def harris_method(my_image, k, mask_size, sigma, average):
+def harris_method(my_image, k, mask_size, sigma, average, threshold):
     my_image = editableImage
     data = my_image.data
     width = my_image.width
@@ -3487,8 +3495,10 @@ def harris_method(my_image, k, mask_size, sigma, average):
     #Step 1: Get Ix, Iy
     image = np.array(data)
     # Prewit Matrix
-    h_x = np.array([[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]])
-    h_y = np.array([[-1, -1, -1], [0, 0, 0], [1, 1, 1]])
+    """h_x = np.array([[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]])
+    h_y = np.array([[-1, -1, -1], [0, 0, 0], [1, 1, 1]])"""
+    h_x = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
+    h_y = np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
     size = 3
     pad = int((size - 1) / 2)
     img = image[:, :, 0]
@@ -3520,8 +3530,8 @@ def harris_method(my_image, k, mask_size, sigma, average):
     image_xy = apply_gauss_filter(image_xy, mask_size, sigma)
 
     r_matrix = calculate_harris_function(image_x2, image_y2, image_xy, width, height, k)
-    a = threshold_matrix_average(r_matrix, width, height, average)
-
+    a = threshold_matrix_average(r_matrix, width, height, average, threshold)
+    draw_ati_image(editableImage)
     draw_pixel_borders(a, width, height, my_image.top_left, [0, 0, 255])
     return
 
@@ -3573,7 +3583,7 @@ def apply_gauss_filter(image_data, size, sigma):
 
 
 def calculate_harris_function(img_x2, img_y2, img_xy, width, height, k):
-    """new_matrix = []
+    new_matrix = []
     for y in range(height):
         row = []
         for x in range(width):
@@ -3582,16 +3592,19 @@ def calculate_harris_function(img_x2, img_y2, img_xy, width, height, k):
             xy = img_xy[y][x][0]
             r = round((x2 * y2 - xy * xy) - k * math.pow(x2 + y2, 2))
             row.append(r)
-        new_matrix.append(row)"""
+        new_matrix.append(row)
     img_x2 = img_x2[:, :, 0]
     img_y2 = img_y2[:, :, 0]
     img_xy = img_xy[:, :, 0]
-    new_matrix2 = np.round((img_x2 * img_y2 - img_xy ** 2) - k * (img_x2 + img_x2) ** 2)
+    new_matrix2 = np.round((img_x2 * img_y2 - img_xy ** 2) - k * (img_x2 + img_y2) ** 2)
+    print(np.sum(new_matrix))
+    print(np.sum(new_matrix2))
     return new_matrix2
 
-def threshold_matrix_average(matrix, width, height, average):
+def threshold_matrix_average(matrix, width, height, average, threshold):
     max = np.max(matrix)
-    thresh = 0.05 * max
+    thresh = threshold * max
+    print("threshold: ", thresh)
     """max_value = matrix[0][0]
     for y in range(height):
         for x in range(width):
