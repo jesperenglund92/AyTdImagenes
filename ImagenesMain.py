@@ -3491,21 +3491,25 @@ def harris_method(my_image, k, mask_size, sigma, average):
     h_y = np.array([[-1, -1, -1], [0, 0, 0], [1, 1, 1]])
     size = 3
     pad = int((size - 1) / 2)
-    for i in range(1):
+    img = image[:, :, 0]
+    image_x = convolve_func(img, h_x, pad, size)
+    image_y = convolve_func(img, h_y, pad, size)
+    """for i in range(1):
         img = image[:, :, i]
         g_x = convolve_func(img, h_x, pad, size)
         g_y = convolve_func(img, h_y, pad, size)
+        image_x = g_x
+        image_y = g_y
         if i < 1:
             image_x = g_x
             image_y = g_y
         else:
             image_x = np.dstack((image_x, g_x))
-            image_y = np.dstack((image_y, g_y))
+            image_y = np.dstack((image_y, g_y))"""
 
     shape = image.shape
     image_x = reshape_images(image_x, shape)
     image_y = reshape_images(image_y, shape)
-
     image_x2 = multiply_images_point_to_point(image_x, image_x, width, height)
     image_x2 = apply_gauss_filter(image_x2, mask_size, sigma)
 
@@ -3523,7 +3527,7 @@ def harris_method(my_image, k, mask_size, sigma, average):
 
 
 def multiply_images_point_to_point(img1, img2, width, height):
-    new_matrix = []
+    """new_matrix = []
     for y in range(height):
         row = []
         for x in range(width):
@@ -3531,6 +3535,13 @@ def multiply_images_point_to_point(img1, img2, width, height):
             pixel_color = [val, val, val]
             row.append(pixel_color)
         new_matrix.append(row)
+    return new_matrix"""
+    new_matrix = np.zeros_like(img1)
+    for row in range(height):
+        for col in range(width):
+            val = img1[row][col][0] * img2[row][col][0]
+            pixel_color = [val, val, val]
+            new_matrix[row][col] = pixel_color
     return new_matrix
 
 
@@ -3562,7 +3573,7 @@ def apply_gauss_filter(image_data, size, sigma):
 
 
 def calculate_harris_function(img_x2, img_y2, img_xy, width, height, k):
-    new_matrix = []
+    """new_matrix = []
     for y in range(height):
         row = []
         for x in range(width):
@@ -3571,9 +3582,12 @@ def calculate_harris_function(img_x2, img_y2, img_xy, width, height, k):
             xy = img_xy[y][x][0]
             r = round((x2 * y2 - xy * xy) - k * math.pow(x2 + y2, 2))
             row.append(r)
-        new_matrix.append(row)
-    return new_matrix
-
+        new_matrix.append(row)"""
+    img_x2 = img_x2[:, :, 0]
+    img_y2 = img_y2[:, :, 0]
+    img_xy = img_xy[:, :, 0]
+    new_matrix2 = np.round((img_x2 * img_y2 - img_xy ** 2) - k * (img_x2 + img_x2) ** 2)
+    return new_matrix2
 
 def threshold_matrix_average(matrix, width, height, average):
     max_value = matrix[0][0]
