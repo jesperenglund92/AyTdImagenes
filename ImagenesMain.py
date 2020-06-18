@@ -3614,31 +3614,65 @@ class SiftWindow:
     def __init__(self):
         self.window = Tk()
         self.window.focus_set()
-        self.window.title("Harris method")
+        self.window.title("Sift method")
         self.window.geometry("260x180")
+        self.img1 = None
+        self.img2 = None
 
         siftMethodRow = 0
         labelColumn = 0
+        loadImg1Row = 1
+        loadImg2Row = 2
+        areSameImage = 3
         Label(self.window, text="Sift method").grid(row=siftMethodRow, column=labelColumn)
         self.btnRunMethod = Button(self.window, text="Detect", command=self.wrapper)
         self.btnRunMethod.grid(row=siftMethodRow, column=1)
 
+        self.btnLoadImg1 = Button(self.window, text="Load Image 1", command=self.load_img_one)
+        self.btnLoadImg1.grid(row=loadImg1Row, column=1)
+
+        self.btnLoadImg2 = Button(self.window, text="Load Image 2", command=self.load_img_two)
+        self.btnLoadImg2.grid(row=loadImg2Row, column=1)
+
+
     def wrapper(self):
-        # print("Not impleted")
-        sift_image_detection(editableImage)
+        img_one_gray = cv.cvtColor(self.img1, cv.COLOR_BGR2GRAY)
+        img_two_gray = cv.cvtColor(self.img2, cv.COLOR_BGR2GRAY)
+        fin_img = sift_match_method(img_one_gray, img_two_gray, 0.75)
+        cv.imshow('Matches', fin_img)
+
+    def load_img_one(self):
+        self.img1 = load_cv_image()
+        cv.imshow('Image 1', self.img1)
+
+    def load_img_two(self):
+        self.img2 = load_cv_image()
+        cv.imshow('Image 2', self.img2)
 
 
-def sift_image_detection(my_image):
+def load_cv_image():
     filename = open_filename()
     img = cv.imread(filename)
-    cv.imshow('Color image', img)
-    gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-    sift_class = sift.SIFT_create()
-    kp = sift_class.detect(gray, None)
-    img = cv.drawKeypoints(gray, kp, img)
-    cv.imshow('Color image2', img)
-    #cv.imwrite('sift_keypoints.jpg', img)
+    return img
 
+
+def sift_match_method(img1, img2, value):
+    sift_class = sift.SIFT_create()
+    kp1, des1 = sift_class.detectAndCompute(img1, None)
+    kp2, des2 = sift_class.detectAndCompute(img2, None)
+
+    bf = cv.BFMatcher()
+    matches = bf.knnMatch(des1, des2, k=2)
+    good = []
+    print(matches)
+    for m, n in matches:
+        #if m.distance < 0.75 * n.distance:
+        if m.distance < float(value) * float(n.distance):
+            good.append([m])
+    print(len(matches))
+    print(len(good))
+
+    return cv.drawMatchesKnn(img1, kp1, img2, kp2, good, flags=2, outImg=None)
 
 
 
