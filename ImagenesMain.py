@@ -3621,24 +3621,41 @@ class SiftWindow:
 
         siftMethodRow = 0
         labelColumn = 0
-        loadImg1Row = 1
-        loadImg2Row = 2
-        areSameImage = 3
+        loadImg1Row = 2
+        loadImg2Row = 3
+        areSameImage = 1
+        ratio = 4
         Label(self.window, text="Sift method").grid(row=siftMethodRow, column=labelColumn)
+
         self.btnRunMethod = Button(self.window, text="Detect", command=self.wrapper)
-        self.btnRunMethod.grid(row=siftMethodRow, column=1)
+        self.btnRunMethod.grid(row=areSameImage, column=1)
 
         self.btnLoadImg1 = Button(self.window, text="Load Image 1", command=self.load_img_one)
-        self.btnLoadImg1.grid(row=loadImg1Row, column=1)
+        self.btnLoadImg1.grid(row=loadImg1Row, column=0)
+        self.btnKPImg1 = Button(self.window, text="See Image 1 Kp", command=self.kp_img_one)
+        self.btnKPImg1.grid(row=loadImg1Row, column=1)
+        self.btnRestoreImg1 = Button(self.window, text="Restor Image 1", command=self.restore_img_one)
+        self.btnRestoreImg1.grid(row=loadImg1Row, column=2)
 
         self.btnLoadImg2 = Button(self.window, text="Load Image 2", command=self.load_img_two)
-        self.btnLoadImg2.grid(row=loadImg2Row, column=1)
+        self.btnLoadImg2.grid(row=loadImg2Row, column=0)
+        self.btnKPImg2 = Button(self.window, text="See Image 2 Kp", command=self.kp_img_two)
+        self.btnKPImg2.grid(row=loadImg2Row, column=1)
+        self.btnRestoreImg2 = Button(self.window, text="Restore Image 2", command=self.restore_img_two)
+        self.btnRestoreImg2.grid(row=loadImg2Row, column=2)
 
+        Label(self.window, text="Image ratio").grid(row=ratio, column=0)
+        self.imageRatio = Entry(self.window)
+        self.imageRatio.grid(row=ratio, column=1)
 
     def wrapper(self):
         img_one_gray = cv.cvtColor(self.img1, cv.COLOR_BGR2GRAY)
         img_two_gray = cv.cvtColor(self.img2, cv.COLOR_BGR2GRAY)
-        fin_img = sift_match_method(img_one_gray, img_two_gray, 0.75)
+        ratio = float(self.imageRatio.get())
+        fin_img = sift_match_method(img_one_gray, img_two_gray, ratio)
+        filename = filedialog.asksaveasfilename()
+        if filename:
+            cv.imwrite(filename, fin_img)
         cv.imshow('Matches', fin_img)
 
     def load_img_one(self):
@@ -3649,6 +3666,19 @@ class SiftWindow:
         self.img2 = load_cv_image()
         cv.imshow('Image 2', self.img2)
 
+    def kp_img_one(self):
+        img1 = sift_kp_method(self.img1)
+        cv.imshow('Image 1', img1)
+
+    def kp_img_two(self):
+        img2 = sift_kp_method(self.img2)
+        cv.imshow('Image 2', img2)
+
+    def restore_img_one(self):
+        cv.imshow('Image 1', self.img1)
+
+    def restore_img_two(self):
+        cv.imshow('Image 2', self.img2)
 
 def load_cv_image():
     filename = open_filename()
@@ -3656,21 +3686,28 @@ def load_cv_image():
     return img
 
 
-def sift_match_method(img1, img2, value):
+def sift_kp_method(img):
+    gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+    sift_class = cv.xfeatures2d.SIFT_create()
+    kp = sift_class.detect(gray, None)
+    return cv.drawKeypoints(gray, kp, None)
+
+
+def sift_match_method(img1, img2, ratio):
     sift_class = sift.SIFT_create()
     kp1, des1 = sift_class.detectAndCompute(img1, None)
     kp2, des2 = sift_class.detectAndCompute(img2, None)
 
+    maxKeyPoint = max(len(kp1), len(kp2))
     bf = cv.BFMatcher()
     matches = bf.knnMatch(des1, des2, k=2)
     good = []
-    print(matches)
     for m, n in matches:
-        #if m.distance < 0.75 * n.distance:
-        if m.distance < float(value) * float(n.distance):
+        if m.distance <= ratio * n.distance:
             good.append([m])
-    print(len(matches))
-    print(len(good))
+
+    print("Good Matches: ", len(good))
+    print("How good it's the match: ", len(good) / maxKeyPoint * 100, "%")
 
     return cv.drawMatchesKnn(img1, kp1, img2, kp2, good, flags=2, outImg=None)
 
