@@ -3642,7 +3642,7 @@ class SiftWindow:
         self.btnKPImg2 = Button(self.window, text="See Image 2 Kp", command=self.kp_img_two)
         self.btnKPImg2.grid(row=loadImg2Row, column=1)
         self.btnRestoreImg2 = Button(self.window, text="Restore Image 2", command=self.restore_img_two)
-        self.btnRestoreImg2.grid(row=loadImg2Row, column=1)
+        self.btnRestoreImg2.grid(row=loadImg2Row, column=2)
 
         Label(self.window, text="Image ratio").grid(row=ratio, column=0)
         self.imageRatio = Entry(self.window)
@@ -3653,7 +3653,7 @@ class SiftWindow:
         img_two_gray = cv.cvtColor(self.img2, cv.COLOR_BGR2GRAY)
         ratio = float(self.imageRatio.get())
         fin_img = sift_match_method(img_one_gray, img_two_gray, ratio)
-        filename = filedialog.asksaveasfile()
+        filename = filedialog.asksaveasfilename()
         if filename:
             cv.imwrite(filename, fin_img)
         cv.imshow('Matches', fin_img)
