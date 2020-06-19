@@ -6,9 +6,9 @@ from skimage.transform import probabilistic_hough_line
 
 from PIL import Image
 
-r = np.array(((1, 2, 3, 4),
-              (4, 5, 6, 4),
-              (7, 8, 9, 4)
+r = np.array(((1, 2, 3),
+              (4, 5, 6),
+              (7, 8, 9)
               ))
 
 g = np.array(((2, 2, 2),
@@ -20,6 +20,8 @@ b = np.array(((3, 3, 3),
               (3, 3, 3),
               (3, 3, 3)
               ))
+
+print((r + g) ** 2)
 
 r2 = np.array((1, 1, 1,
                1, 1, 1,
@@ -117,65 +119,10 @@ def add_circle(image, radius, center):
     return image
 
 
-def hough_circle(img, thresh, radii):
-    # Rho and Theta ranges
-    height, width = img.shape
-    if radii == None:
-        r_max = np.max((height, width))
-        r_min = 3
-    else:
-        r_max, r_min = np.max(radii), np.min(radii)
-
-    R = r_max - r_min + 1  # number of radii to check
-
-    thetas = np.deg2rad(np.arange(0, 360))
-    y_indices, x_indices = np.nonzero(img)  # (row, col) indices for borders
-
-    cos_t = np.cos(thetas)
-    sin_t = np.sin(thetas)
-    num_thetas = len(thetas)
-    fin_circles = np.zeros(img.shape)
-    for val in range(R):
-        r = r_min + val
-        # Hough accumulator array
-        # accumulator representing r, X and Y respectively
-        accumulator = np.zeros((r, width + 2 * r, height + 2 * r))
-        #Create circle blueprint
-        blueprint = np.zeros((2 * r + 1, 2 * r + 1))
-        a, b = r + 1, r + 1  # The center of the blueprint/mask
-        for index in range(num_thetas):
-            x = int(np.round(r * cos_t[index]))
-            y = int(np.round(r * sin_t[index]))
-            calc = np.round(np.sqrt(x ** 2 + y ** 2))
-            if r - 0.5 < calc < r + 0.5:
-                blueprint[a + x - 1, b + y - 1] = 1
-        num_points = np.argwhere(blueprint).shape[0]
-        # Vote in the hough accumulator
-        for i in range(len(x_indices)):
-            x = x_indices[i]
-            y = y_indices[i]
-            X = [x - a + r, x + a + r - 1]  # extreme X values
-            Y = [y - b + r, y + b + r - 1]  # extreme Y values
-            accumulator[r - 1, X[0]:X[1], Y[0]:Y[1]] += blueprint
-
-        accumulator[r - 1][accumulator[r - 1] < num_points * thresh / r] = 0
-        resized_acc = accumulator[:, r:-r, r:-r]
-        for r, a, b in np.argwhere(resized_acc):
-            r += 1
-            a += 1
-            b += 1
-            for y in range(len(image)):
-                for x in range(len(image[0])):
-                    calc = np.sqrt((x - a) ** 2 + (y - b) ** 2)
-                    if r - 0.5 < calc < r + 0.5:
-                        fin_circles[x, y] = 1
-    return fin_circles
-
-
 #image = create_bin_square_edges(10)
 #hough = hough_line(image, 8)
 
-image = create_bin_circle_edges(21, 5)
+"""image = create_bin_circle_edges(21, 5)
 image = add_circle(image, 3, (6, 6))
 image[6, 7] = 0
 image[7, 6] = 0
@@ -188,7 +135,7 @@ image[6, 9] = 0
 image[5, 8] = 0
 print(image)
 hough = hough_circle(image, 2, (3,5))
-print(hough)
+print(hough)"""
 
 
 
