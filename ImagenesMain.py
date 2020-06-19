@@ -10,7 +10,7 @@ from PIL import Image
 from os import path
 import re
 import time
-#from cv2 import xfeatures2d as sift
+from cv2 import xfeatures2d as sift
 import cv2 as cv
 from pygame.locals import *
 
@@ -3735,6 +3735,7 @@ def sift_match_method(img1, img2, ratio):
         if m.distance <= ratio * n.distance:
             good.append([m])
 
+    print("Matches: ", maxKeyPoint)
     print("Good Matches: ", len(good))
     print("How good it's the match: ", len(good) / maxKeyPoint * 100, "%")
 
